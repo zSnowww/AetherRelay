@@ -1,4 +1,4 @@
-!macro StopPandaAdbServer
+!macro StopAdbServer
   IfFileExists "$INSTDIR\tools\adb.exe" 0 +3
     DetailPrint "Stopping the bundled ADB server before updating files..."
     nsExec::ExecToLog '"$INSTDIR\tools\adb.exe" kill-server'
@@ -11,9 +11,9 @@
 !macroend
 
 !macro NSIS_HOOK_PREINSTALL
-  !insertmacro StopPandaAdbServer
+  !insertmacro StopAdbServer
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
-  !insertmacro StopPandaAdbServer
+  !insertmacro StopAdbServer
 !macroend

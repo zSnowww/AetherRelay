@@ -5,11 +5,12 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "updater:default",
     {
       "identifier": "opener:allow-open-url",
       "allow": [
         { "url": "https://github.com/Genymobile/scrcpy" },
-        { "url": "https://pandagame.app" }
+        { "url": "https://zsnow.dev" }
       ]
     }
   ]

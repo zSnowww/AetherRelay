@@ -65,7 +65,7 @@ jobs:
           APPLE_KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
         run: |
           CERTIFICATE_PATH="$RUNNER_TEMP/developer-id-application.p12"
-          KEYCHAIN_PATH="$RUNNER_TEMP/panda-build.keychain-db"
+          KEYCHAIN_PATH="$RUNNER_TEMP/aether-build.keychain-db"
           echo "$APPLE_CERTIFICATE" | base64 --decode > "$CERTIFICATE_PATH"
           security create-keychain -p "$APPLE_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
@@ -88,16 +88,18 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_API_ISSUER: ${{ runner.os == 'macOS' && secrets.APPLE_API_ISSUER || '' }}
           APPLE_API_KEY: ${{ runner.os == 'macOS' && secrets.APPLE_API_KEY_ID || '' }}
           APPLE_API_KEY_PATH: ${{ runner.os == 'macOS' && env.APPLE_API_KEY_PATH || '' }}
         with:
           tagName: v__VERSION__
-          releaseName: Panda Gaming Desktop v__VERSION__
+          releaseName: Aether Relay v__VERSION__
           releaseBody: |
-            Panda Gaming Desktop desktop installers.
+            Aether Relay installers.
 
-            adb, scrcpy and scrcpy-server are included. No separate installation is required.
+            Official portable adb, scrcpy and scrcpy-server are included. No separate installation is required.
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

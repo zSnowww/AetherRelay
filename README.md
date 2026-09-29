@@ -1,97 +1,101 @@
-# Panda Gaming Desktop
+<div align="center">
 
-A desktop companion built for Panda Mouse Pro, bringing Android games to your
-computer with keyboard and mouse controls. Powered by the open-source project
-[scrcpy](https://github.com/Genymobile/scrcpy).
+<img src="public/aether-logo.svg" alt="Aether Relay Logo" width="72" height="72" />
 
-![Panda Gaming Desktop interface](screenshot.png)
+# Aether Relay
+
+**High-performance Android screen mirroring and hardware keymapping bridge for desktop.**
+
+[![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
+[![Tauri v2](https://img.shields.io/badge/built_with-Tauri_v2-ffc13d.svg)](https://tauri.app/)
+[![Next.js 16](https://img.shields.io/badge/frontend-Next.js_16-black.svg)](https://nextjs.org/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)]()
+
+[Website](https://zsnow.dev) • [Releases](https://github.com/zSnowww/AetherRelay/releases) • [Architecture](docs/architecture.md) • [Contributing](CONTRIBUTING.md)
+
+</div>
+
+---
+
+Aether Relay is a cross-platform desktop application built with Tauri 2 and Next.js that lets you play Android games on your computer using native mechanical keyboards and gaming mice. It integrates official portable builds of [scrcpy](https://github.com/Genymobile/scrcpy) with an automated, unrooted activation bridge for supported keymappers including **GG Mouse Pro**, **Panda Mouse Pro**, and **Shizuku**.
 
 ## Features
 
-- Windows, macOS, and Linux support
-- USB and wireless ADB device detection
-- One-click Android screen mirroring
-- Keyboard and mouse forwarding for Panda Mouse Pro
-- One-click Panda Mouse Pro launch and activation
-- Controls for resolution, frame rate, bitrate, audio, fullscreen, and more
-- Built-in scrcpy shortcut reference
-- Chinese and English interface
-- Bundled adb, scrcpy, and scrcpy-server in release packages
+- **Low-Latency Display Mirroring:** Powered by `scrcpy` over USB or wireless ADB, supporting up to 120 FPS, resolutions up to 4K, and customizable bitrates (8 to 48 Mbps).
+- **Physical Input Forwarding:** Uses direct hardware injection flags (`-K -M`) to route physical keyboard and mouse events directly to the Android kernel.
+- **Unrooted Keymapper Activation:** Automated ADB activation script execution with real-time log output and status verification.
+- **Virtual Display Mode:** Run games in an independent virtual display on desktop while keeping your phone's primary screen unlocked and accessible (Android 10+).
+- **Dual RAM & Process Monitor:** Real-time RAM telemetry for both the connected Android device (diagnosing gaming stutter, GC pauses, and memory pressure) and the host PC, with safe process termination.
+- **Full Internationalization:** Native support for English, Spanish, and Simplified Chinese.
+- **Zero Telemetry:** Fully local execution with no analytics, trackers, or remote telemetry.
 
-Panda Gaming Desktop uses the device's main display by default. Its experimental
-independent display mode runs the game on your computer while leaving the
-phone's main screen free for normal use. This mode requires Android 10 or later.
+## Quick Start
+
+### 1. Enable USB Debugging on Android
+1. Go to **Settings > About phone**.
+2. Tap **Build number** 7 times to unlock Developer options.
+3. Open **Developer options** and enable **USB debugging**.
+
+### 2. Connect Device
+Connect your phone to your computer with a data-capable USB cable. When the authorization dialog appears on your phone, choose **Always allow from this computer**.
+
+### 3. Launch & Play
+1. Select your device from the list in Aether Relay.
+2. Click **Activate Keymapper** (`Activar Mapeador`).
+3. Once activation completes, click **Start Mirror** (`Iniciar Espejo`).
+
+## Keymapper Activation & Security
+
+Aether Relay operates strictly through standard Android Debug Bridge (ADB) APIs without requiring root privileges:
+
+- **No System Partition Changes:** Does not modify `/system`, flash custom ROMs, or unlock the bootloader. Knox warranty counters, SafetyNet, and Google Play Integrity remain unaffected.
+- **In-Memory Daemon Execution:** Launches the keymapper's official service (`inject_server` or Shizuku start script) under Android's standard `shell` UID (2000). The process runs entirely in RAM.
+- **Deterministic Cleanup:** Clicking **Deactivate Keymapper** terminates all associated mapper processes and temporary scripts. Rebooting the device also clears all running services automatically.
+
+## Known Issues
+
+### Key Repeat in Games (WASD / Joystick Jitter)
+Holding down movement keys (such as `W`) on certain desktop environments can trigger OS-level key repeat events, interfering with Android's continuous touch simulation.
+
+To prevent joystick stuttering:
+- **Wayland (Hyprland / Sway):** Set `repeat_rate = 0` in your compositor configuration during gameplay.
+- **X11 (Linux):** Run `xset r off` before launching the game, and `xset r on` when finished.
+- **Windows:** Lower the keyboard repeat rate in Control Panel, or enable FilterKeys.
 
 ## Development
 
-Install Node.js and Rust, then run:
+### Prerequisites
+- Node.js (v18 or later)
+- Rust toolchain (stable, 1.77 or later)
+- Platform build libraries (e.g. `libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-dev` on Linux)
 
+### Setup & Run
 ```bash
+# Clone the repository
+git clone https://github.com/zsnow/AetherRelay.git
+cd AetherRelay
+
+# Install dependencies
 npm install
+
+# Run development server with Tauri desktop window
 npm run tauri dev
 ```
 
-Development mode can use adb and scrcpy from your system `PATH`. On macOS and
-Windows, common Android SDK and package-manager locations are also detected.
-
-To run only the web interface:
-
+### Building Release Binaries
 ```bash
-npm run dev
+# Prepare production frontend bundle
+npm run build
+
+# Package desktop installer for current platform
+npm run tauri build
 ```
 
-## Build an Installer
+## Contributing
 
-Build an installer for the current operating system:
-
-```bash
-npm run package
-```
-
-The packaging script downloads the official scrcpy 4.1 portable package for
-the current platform, verifies its SHA-256 checksum, bundles the required tools,
-and runs `tauri build`.
-
-Build output is written to:
-
-```text
-src-tauri/target/release/bundle/
-```
-
-Supported release targets:
-
-- Windows x64: NSIS installer
-- Linux x64: AppImage and Debian package
-- macOS Apple Silicon: DMG
-- macOS Intel: DMG
-
-## GitHub Releases
-
-Push a version tag such as `v0.1.0`, or manually run the **Build desktop
-release** workflow. GitHub Actions builds all supported platforms and uploads
-the installers to a draft GitHub Release.
-
-Unsigned macOS and Windows builds may display operating-system security
-warnings. Code signing and macOS notarization are recommended for public
-releases.
-
-## Privacy and Code Signing
-
-Panda Gaming Desktop does not collect analytics or transmit personal data.
-See the [privacy policy](PRIVACY.md) for details.
-
-Release signing rules, trusted build sources, and maintainer roles are defined
-in the [code signing policy](CODE_SIGNING_POLICY.md).
-
-## Third-Party Software
-
-Release packages include the license file supplied by scrcpy and the project's
-[third-party notices](src-tauri/resources/THIRD_PARTY_NOTICES.txt). The exact
-scrcpy package version, source URL, and SHA-256 checksum used by each build are
-recorded in `tools/panda-tools.json` inside the installed application.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines, coding style, and local testing instructions. Security vulnerability disclosures should follow the policy outlined in [SECURITY.md](SECURITY.md).
 
 ## License
 
-Source code and project artwork are licensed under the
-[Apache License 2.0](LICENSE). This license does not grant permission to use
-Panda Gaming trademarks or imply endorsement of modified distributions.
+Source code is released under the [Apache License, Version 2.0](LICENSE).  
+Third-party component licenses and scrcpy distribution notices are documented in [`THIRD_PARTY_NOTICES.txt`](src-tauri/resources/THIRD_PARTY_NOTICES.txt) and [`NOTICE`](NOTICE).

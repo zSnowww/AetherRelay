@@ -1,10 +1,10 @@
-Panda Gaming Desktop - Third-Party Software Notices
-===================================================
+Aether Relay - Third-Party Software Notices
+============================================
 
-Panda Gaming Desktop distributes the official portable scrcpy package so
-that users can mirror and control Android devices without installing adb or
-scrcpy separately. The exact bundled package, version, source URL and SHA-256
-digest are recorded in tools/panda-tools.json inside the application bundle.
+Aether Relay distributes the official portable scrcpy package so that users
+can mirror and control Android devices without installing adb or scrcpy
+separately. The exact bundled package, version, source URL and SHA-256 digest
+are recorded in tools/aether-tools.json inside the application bundle.
 
 The following notices apply to components that may be included in that
 official package for the target operating system. This file is provided for
@@ -58,9 +58,9 @@ License information: https://github.com/libusb/libusb/blob/master/COPYING
 
 Source availability
 -------------------
-Panda Gaming Desktop does not modify the source code of these third-party
-components. On macOS, bundled executable files may be re-signed with the Panda
-Gaming Desktop Developer ID certificate to meet Apple's notarization
-requirements. Source code and corresponding license information are available
-from the project links above. The exact upstream scrcpy portable archive used
-by each build is identified in tools/panda-tools.json.
+Aether Relay does not modify the source code of these third-party components.
+On macOS, bundled executable files may be re-signed with a Developer ID
+certificate to meet Apple's notarization requirements. Source code and
+corresponding license information are available from the project links above.
+The exact upstream scrcpy portable archive used by each build is identified in
+tools/aether-tools.json.

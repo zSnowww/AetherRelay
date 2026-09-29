@@ -1,18 +1,18 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Panda Gaming Desktop",
+  "productName": "Aether Relay",
   "version": "0.1.7",
-  "identifier": "com.pandagaming.desktop",
+  "identifier": "dev.zsnow.aetherrelay",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
     "beforeBundleCommand": "node scripts/sign-macos-tools.mjs",
-    "frontendDist": "../dist"
+    "frontendDist": "../out"
   },
   "app": {
     "windows": [{
-      "title": "Panda Gaming Desktop",
+      "title": "Aether Relay",
       "width": 1080,
       "height": 760,
       "minWidth": 780,
@@ -38,10 +38,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
-    "publisher": "Beijing Guanshanjiyue Technology Co., Ltd.",
-    "copyright": "Copyright 2026 Beijing Guanshanjiyue Technology Co., Ltd.",
-    "homepage": "https://pandagame.app",
+    "targets": ["deb"],
+    "publisher": "zsnow",
+    "copyright": "Copyright 2026 zsnow",
+    "homepage": "https://zsnow.dev",
     "license": "Apache-2.0",
     "licenseFile": "../LICENSE",
     "category": "Utility",
@@ -53,7 +53,7 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "signingIdentity": "Developer ID Application: Beijing Guanshanjiyue Technology Co., Ltd. (Q348QPFLQ4)"
+      "signingIdentity": null
     },
     "windows": {
       "nsis": {
@@ -64,6 +64,14 @@
       "tools/": "tools/",
       "resources/THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt",
       "../NOTICE": "NOTICE"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEExRDlDRTMzNEE5RTY0NUIKUldSYlpKNUtNODdab2RtVlliSFdYL1lLdlZjSkdxaTFwckFEdjhUTFY1V0JST1B3eWxiRFBxWG8K",
+      "endpoints": [
+        "https://github.com/zSnowww/AetherRelay/releases/latest/download/latest.json"
+      ]
     }
   }
 }

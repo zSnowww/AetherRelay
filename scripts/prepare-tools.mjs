@@ -39,7 +39,7 @@ if (!asset) {
 }
 
 const required = process.platform === "win32" ? ["adb.exe", "scrcpy.exe", "scrcpy-server"] : ["adb", "scrcpy", "scrcpy-server"];
-const existingMetadata = await readFile(join(toolsDir, "panda-tools.json"), "utf8")
+const existingMetadata = await readFile(join(toolsDir, "aether-tools.json"), "utf8")
   .then(JSON.parse)
   .catch(() => null);
 const existingFiles = await Promise.all(required.map((file) => access(join(toolsDir, file)).then(() => true).catch(() => false)));
@@ -48,7 +48,7 @@ if (existingMetadata?.sha256 === asset.sha256 && existingMetadata?.platform === 
   process.exit(0);
 }
 
-const workDir = await mkdtemp(join(tmpdir(), "panda-tools-"));
+const workDir = await mkdtemp(join(tmpdir(), "aether-tools-"));
 const archivePath = join(workDir, asset.file);
 const extractDir = join(workDir, "extract");
 
@@ -86,7 +86,7 @@ try {
     if (!found) throw new Error(`官方归档缺少必要文件：${file}`);
   }
 
-  await writeFile(join(toolsDir, "panda-tools.json"), JSON.stringify({
+  await writeFile(join(toolsDir, "aether-tools.json"), JSON.stringify({
     scrcpyVersion: SCRCPY_VERSION,
     platform: process.platform,
     arch: process.arch,

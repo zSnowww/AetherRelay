@@ -1,5 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    panda_gaming_desktop_lib::run();
+    aether_relay_lib::run();
 }

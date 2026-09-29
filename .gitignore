@@ -1,5 +1,7 @@
 node_modules
-dist
+.next/
+out/
+dist/
 src-tauri/target
 .DS_Store
 *.log
@@ -10,3 +12,6 @@ src-tauri/target
 *base64*.txt
 src-tauri/tools/*
 !src-tauri/tools/.gitkeep
+*.key
+*.key.pub
+

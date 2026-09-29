@@ -59,12 +59,12 @@ replaceChecked("package.json", /("version"\s*:\s*")[^"]+("\s*,)/, withVersion);
 replaceChecked("package-lock.json", /^(  "version"\s*:\s*")[^"]+("\s*,)/m, withVersion);
 replaceChecked(
   "package-lock.json",
-  /("packages"\s*:\s*\{\s*""\s*:\s*\{\s*"name"\s*:\s*"panda-gaming-desktop"\s*,\s*"version"\s*:\s*")[^"]+("\s*,)/,
+  /("packages"\s*:\s*\{\s*""\s*:\s*\{\s*"name"\s*:\s*"aether-relay"\s*,\s*"version"\s*:\s*")[^"]+("\s*,)/,
   withVersion
 );
 replaceChecked("src-tauri/tauri.conf.json", /("version"\s*:\s*")[^"]+("\s*,)/, withVersion);
 replaceChecked("src-tauri/Cargo.toml", /(\[package\][\s\S]*?\nversion\s*=\s*")[^"]+("\s*\n)/, withVersion);
-replaceChecked("src-tauri/Cargo.lock", /(\[\[package\]\]\nname = "panda-gaming-desktop"\nversion = ")[^"]+("\n)/, withVersion);
+replaceChecked("src-tauri/Cargo.lock", /(\[\[package\]\]\nname = "aether-relay"\nversion = ")[^"]+("\n)/, withVersion);
 NODE
 
 version_files=(

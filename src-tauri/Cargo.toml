@@ -1,15 +1,15 @@
 [package]
-name = "panda-gaming-desktop"
+name = "aether-relay"
 version = "0.1.7"
-description = "Desktop companion for Panda Mouse Pro with Android mirroring and keyboard-and-mouse controls"
-authors = ["Beijing Guanshanjiyue Technology Co., Ltd."]
+description = "Mirror Android to your desktop and play with keyboard and mouse"
+authors = ["zsnow"]
 license = "Apache-2.0"
-repository = "https://github.com/0xGaryWu/PandaGamingDesktop"
-homepage = "https://pandagame.app"
+repository = "https://github.com/zSnowww/AetherRelay"
+homepage = "https://zsnow.dev"
 edition = "2021"
 
 [lib]
-name = "panda_gaming_desktop_lib"
+name = "aether_relay_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -18,5 +18,6 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tauri = { version = "2", features = [] }
+tauri = { version = "2.12", features = [] }
 tauri-plugin-opener = "2"
+tauri-plugin-updater = "2.13"

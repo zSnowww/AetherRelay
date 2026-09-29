@@ -15,8 +15,8 @@ software authored by this project.
 
 ## Roles
 
-- Committer and reviewer: [0xGaryWu](https://github.com/0xGaryWu)
-- Signing approver: [0xGaryWu](https://github.com/0xGaryWu)
+- Committer and reviewer: [zsnow](https://github.com/zsnow)
+- Signing approver: [zsnow](https://github.com/zsnow)
 
 Repository and signing-service accounts used by these roles must have
 multi-factor authentication enabled. Signing requests must originate from the
