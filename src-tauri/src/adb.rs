@@ -183,27 +183,43 @@ fn running_preset_packages(adb: &Path, serial: &str) -> Vec<String> {
         .collect()
 }
 
-/// Return a known preset app when Android reports it as the foreground app.
-/// We only need to identify apps that could otherwise be stopped by the
-/// booster, so parsing is deliberately constrained to the allow-list.
-fn foreground_preset_package(adb: &Path, serial: &str) -> Option<String> {
+/// Return the package name of the active foreground app reported by Android's window manager.
+fn foreground_package(adb: &Path, serial: &str) -> Option<String> {
     let output = hidden_command(adb)
         .args(["-s", serial, "shell", "dumpsys", "window", "windows"])
         .output()
         .ok()?;
-    foreground_preset_package_from_output(&String::from_utf8_lossy(&output.stdout))
+    foreground_package_from_output(&String::from_utf8_lossy(&output.stdout))
 }
 
-fn foreground_preset_package_from_output(output: &str) -> Option<String> {
-    PRESET_BACKGROUND_APPS
-        .iter()
-        .find(|(_, _, package)| {
-            output.lines().any(|line| {
-                (line.contains("mCurrentFocus") || line.contains("mFocusedApp"))
-                    && line.contains(package)
-            })
-        })
-        .map(|(_, _, package)| (*package).to_string())
+fn foreground_package_from_output(output: &str) -> Option<String> {
+    for line in output.lines() {
+        if !line.contains("mCurrentFocus") && !line.contains("mFocusedApp") {
+            continue;
+        }
+        for token in line.split_whitespace() {
+            let candidate = token
+                .trim_matches(|c: char| c == '{' || c == '}' || c == ')' || c == '(' || c == ',');
+            if let Some((raw_pkg, _)) = candidate.split_once('/') {
+                let pkg = raw_pkg
+                    .split('{')
+                    .next_back()
+                    .unwrap_or(raw_pkg)
+                    .split('=')
+                    .next_back()
+                    .unwrap_or(raw_pkg)
+                    .trim();
+                if pkg.contains('.')
+                    && !pkg.starts_with('.')
+                    && !pkg.ends_with('.')
+                    && !pkg.contains(' ')
+                {
+                    return Some(pkg.to_string());
+                }
+            }
+        }
+    }
+    None
 }
 
 const PROTECTED_GAME_PACKAGES: &[(&str, &str)] = &[
@@ -616,18 +632,29 @@ pub(crate) async fn list_phone_processes(
             return Err(command_error(&output));
         }
 
+        let foreground = foreground_package(&adb, &serial);
         let parsed = parse_phone_processes(&String::from_utf8_lossy(&output.stdout), &all_packages);
         let processes = parsed
             .into_iter()
             .map(|proc| {
+                let is_foreground = foreground.as_deref() == Some(&proc.package);
+                let protection_reason = if is_foreground {
+                    Some(
+                        proc.protection_reason
+                            .unwrap_or_else(|| "Aplicación en primer plano".to_string()),
+                    )
+                } else {
+                    proc.protection_reason
+                };
+                let protected = proc.protected || is_foreground;
                 let icon = get_package_icon(&adb, &serial, &proc.package);
                 PhoneProcessInfo {
                     pid: proc.pid,
                     name: display_name_for_package(&proc.package),
                     package: proc.package,
                     memory_bytes: proc.memory_bytes,
-                    protected: proc.protected,
-                    protection_reason: proc.protection_reason,
+                    protected,
+                    protection_reason,
                     icon,
                 }
             })
@@ -679,7 +706,7 @@ pub(crate) async fn boost_phone_memory(
     tauri::async_runtime::spawn_blocking(move || {
         let adb = resolve_tool("adb", &app).ok_or("ADB not found")?;
         let before = device_memory_stats_blocking(&serial, &app)?;
-        let protected_foreground_package = foreground_preset_package(&adb, &serial);
+        let protected_foreground_package = foreground_package(&adb, &serial);
         let mut requested = packages
             .into_iter()
             .map(|package| package.trim().to_string())
@@ -698,6 +725,13 @@ pub(crate) async fn boost_phone_memory(
             return Err(format!(
                 "La aplicación {package} no está instalada en el dispositivo."
             ));
+        }
+        if let Some(ref fg) = protected_foreground_package {
+            if requested.iter().any(|package| package == fg) {
+                return Err(format!(
+                    "{fg} está en primer plano y no se puede cerrar desde Game Boost."
+                ));
+            }
         }
         if let Some(package) = requested
             .iter()
@@ -759,6 +793,12 @@ pub(crate) async fn kill_phone_apps(
             return Err(format!(
                 "La aplicación {package} no está instalada en el teléfono."
             ));
+        }
+        let foreground = foreground_package(&adb, &serial);
+        if let Some(ref fg) = foreground {
+            if requested.iter().any(|package| package == fg) {
+                return Err(format!("{fg} está en primer plano y no se puede cerrar."));
+            }
         }
         if let Some(package) = requested
             .iter()
@@ -1280,14 +1320,30 @@ mod tests {
     }
 
     #[test]
-    fn foreground_parser_only_matches_known_preset_apps() {
+    fn foreground_parser_extracts_any_active_package() {
         let chrome =
             "mCurrentFocus=Window{42 u0 com.android.chrome/com.google.android.apps.chrome.Main}";
         assert_eq!(
-            foreground_preset_package_from_output(chrome),
+            foreground_package_from_output(chrome),
             Some("com.android.chrome".to_string())
         );
         let game = "mCurrentFocus=Window{42 u0 com.example.game/.MainActivity}";
-        assert_eq!(foreground_preset_package_from_output(game), None);
+        assert_eq!(
+            foreground_package_from_output(game),
+            Some("com.example.game".to_string())
+        );
+        let cod = "mCurrentFocus=Window{c18c214 u0 com.activision.callofduty.shooter/com.tencent.tmgp.cod.MainActivity}";
+        assert_eq!(
+            foreground_package_from_output(cod),
+            Some("com.activision.callofduty.shooter".to_string())
+        );
+        let focused_app =
+            "mFocusedApp=ActivityRecord{123 u0 com.supercell.clashroyale/.GameActivity t456}";
+        assert_eq!(
+            foreground_package_from_output(focused_app),
+            Some("com.supercell.clashroyale".to_string())
+        );
+        let empty = "mCurrentFocus=null";
+        assert_eq!(foreground_package_from_output(empty), None);
     }
 }

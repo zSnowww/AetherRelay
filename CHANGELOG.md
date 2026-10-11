@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Free Fire, Free Fire MAX, Shizuku, and supported GG Mouse/Panda mapper packages are protected from Android Game Boost termination.
 
 ### Fixed
+- Fixed foreground app safety: implemented generic window focus detection (`foreground_package`) to guard any active foreground game or application from termination during Game Boost and individual app kills, and automatically flag foreground apps as protected in process listings.
 - Fixed black screen on application startup under Linux (Wayland / Hyprland) by configuring `WEBKIT_DISABLE_DMABUF_RENDERER=1` in `src-tauri/src/main.rs`.
 - Fixed `Text file busy (os error 26)` build failures during packaging by automatically stopping background ADB server processes in `scripts/package.mjs`.
 - Fixed Next.js static asset export configuration by adding `images: { unoptimized: true }` in `next.config.mjs`.

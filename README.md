@@ -65,7 +65,7 @@ To prevent joystick stuttering:
 ## Development
 
 ### Prerequisites
-- Node.js (v18 or later)
+- Node.js (v24 or later)
 - Rust toolchain (stable, 1.77 or later)
 - Platform build libraries (e.g. `libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-dev` on Linux)
 
@@ -84,11 +84,8 @@ npm run tauri dev
 
 ### Building Release Binaries
 ```bash
-# Prepare production frontend bundle
-npm run build
-
-# Package desktop installer for current platform
-npm run tauri build
+# Build desktop package with verified bundled tools (adb, scrcpy)
+npm run package
 ```
 
 ## Contributing
