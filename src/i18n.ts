@@ -249,6 +249,53 @@ const zh = {
   ,downloadingUpdate: "正在下载更新…"
   ,updateInstalledRestart: "更新已安装完毕，正在重启…"
   ,updateCheckFailed: "检查更新失败，请稍后重试"
+  ,tabDiagnostics: "诊断"
+  ,diagnosticsEyebrow: "会话遥测与故障排除"
+  ,diagnosticsTitle: "会话诊断与延迟排查"
+  ,diagnosticsSubtitle: "低开销实时监控 USB 速率、ADB 延迟、温度与 scrcpy 管道，定位卡顿与延迟根源。"
+  ,adbLatencyTitle: "ADB 命令延迟"
+  ,adbLatencySubtitle: "到设备的往返执行耗时（非显示延迟）"
+  ,baselineLatency: "基线"
+  ,captureFpsTitle: "采集帧率"
+  ,captureFpsSubtitle: "手机编码端抓取速率（不等于显示刷新率）"
+  ,batteryTempTitle: "电池温度"
+  ,thermalStatusTitle: "热压力状态"
+  ,usbLinkSpeedTitle: "USB 协商速率"
+  ,usbLinkSubtitle: "通过 Linux sysfs 实时读取"
+  ,reconnectCountTitle: "重连次数"
+  ,activeEncoderTitle: "硬件编码器"
+  ,activeDecoderTitle: "解码器与显示"
+  ,markStutterButton: "标记卡顿 / Tirón"
+  ,markStutterTip: "立即保存过去 60 秒与后续 30 秒的样本及日志快照"
+  ,stutterMarkedNotice: "已记录卡顿标记（正在采集后续 30 秒窗口）"
+  ,bookmarksTitle: "已标记事件记录"
+  ,noBookmarksYet: "当前会话暂未标记任何卡顿事件。"
+  ,bookmarkStateCollecting: "采集窗口中 (+30s)"
+  ,bookmarkStateComplete: "已完成窗口"
+  ,bookmarkStateInterrupted: "因会话结束中断"
+  ,exportDiagnosticsButton: "导出诊断报告 (JSON)"
+  ,exportSuccess: "诊断数据已复制到剪贴板，并准备好分享"
+  ,scrcpyLogsTitle: "scrcpy 实时日志管道 (stdout + stderr)"
+  ,filterAll: "全部"
+  ,filterWarnings: "警告与错误"
+  ,filterEncoder: "编解码 / 管道"
+  ,clearLogs: "清空日志"
+  ,logsEmpty: "暂无日志输出，启动镜像后将在此实时呈现"
+  ,baselinePresetTitle: "受控测试基线配置 (Control Baseline)"
+  ,baselinePresetDesc: "设为 1920px max、60 FPS、H.264、8 Mbps、关闭音频、0 ms 缓冲，用于排查性能变量。"
+  ,applyBaselineButton: "应用基线测试预设"
+  ,baselineApplied: "已应用 8 Mbps H.264 基线预设"
+  ,forceWaylandOption: "强制原生 Wayland (SDL_VIDEODRIVER=wayland)"
+  ,forceWaylandDesc: "在 Linux / Hyprland 环境下绕过 XWayland，测试能否消除帧同步微卡顿。"
+  ,videoBufferOption: "视频抖动缓冲区 (Video Jitter Buffer)"
+  ,videoBufferJitterDesc: "scrcpy 默认 0 ms 追求最低延迟；可测试 10 ms 或 20 ms 吸收 USB 抖动。"
+  ,guideTitle: "根因定位向导：是视频延迟还是输入队列？"
+  ,guideStep1Title: "测试 1：物理触屏 vs 键鼠 WASD"
+  ,guideStep1Desc: "当感觉延迟时，直接用手指触碰手机屏幕。如果手机即时响应但电脑监视器显示慢，瓶颈在视频传输/解码。如果手机本身也响应慢，问题在 UHID / 映射器守护进程。"
+  ,guideStep2Title: "测试 2：USB 协商与端口状态"
+  ,guideStep2Desc: "检查上方 USB 速率是否为 480 Mbps (High-Speed)。若降为 12 Mbps (Full-Speed)，说明线材、接口或集线器发生硬件协商降级。"
+  ,guideStep3Title: "测试 3：热降频与温度关联"
+  ,guideStep3Desc: "若开局流畅而在温度超过 42 °C 后持续卡顿，但重新连接后即使温度未降立刻恢复流畅，说明根因更可能是队列累积而非硬件热降频。"
 } as const;
 
 const en: Record<keyof typeof zh, string> = {
@@ -508,6 +555,53 @@ const en: Record<keyof typeof zh, string> = {
   downloadingUpdate: "Downloading update...",
   updateInstalledRestart: "Update installed successfully. Restarting...",
   updateCheckFailed: "Could not check for updates. Try again later.",
+  tabDiagnostics: "Diagnostics",
+  diagnosticsEyebrow: "Session Telemetry & Troubleshooting",
+  diagnosticsTitle: "Session Diagnostics & Stutter Toolkit",
+  diagnosticsSubtitle: "Low-overhead live monitoring of USB link, ADB latency, thermal pressure, and scrcpy pipeline to isolate lag and stutter causes.",
+  adbLatencyTitle: "ADB Command Latency",
+  adbLatencySubtitle: "Round-trip execution to device (not display presentation latency)",
+  baselineLatency: "Baseline",
+  captureFpsTitle: "Capture Frame Rate",
+  captureFpsSubtitle: "Android hardware encoder capture rate (not display refresh)",
+  batteryTempTitle: "Battery Temperature",
+  thermalStatusTitle: "Thermal Pressure",
+  usbLinkSpeedTitle: "USB Link Negotiation",
+  usbLinkSubtitle: "Read directly via Linux sysfs",
+  reconnectCountTitle: "Reconnections",
+  activeEncoderTitle: "Hardware Encoder",
+  activeDecoderTitle: "Decoder & Display",
+  markStutterButton: "Mark Stutter / Incident",
+  markStutterTip: "Bookmark stutter capturing -60s prior and +30s following sample window",
+  stutterMarkedNotice: "Stutter incident marked (collecting +30s window)",
+  bookmarksTitle: "Recorded Stutter Incidents",
+  noBookmarksYet: "No stutter incidents bookmarked in this session yet.",
+  bookmarkStateCollecting: "Collecting window (+30s)",
+  bookmarkStateComplete: "Complete window",
+  bookmarkStateInterrupted: "Interrupted by session stop",
+  exportDiagnosticsButton: "Export Diagnostics (JSON)",
+  exportSuccess: "Diagnostics report exported and copied to clipboard",
+  scrcpyLogsTitle: "scrcpy Real-Time Console (stdout + stderr)",
+  filterAll: "All",
+  filterWarnings: "Warnings & Errors",
+  filterEncoder: "Pipeline / Codec",
+  clearLogs: "Clear View",
+  logsEmpty: "No logs captured yet. Start mirror to stream real-time events.",
+  baselinePresetTitle: "Controlled Test Baseline",
+  baselinePresetDesc: "Applies 1920px max, 60 FPS, H.264, 8 Mbps, Audio OFF, Buffer 0ms to isolate streaming variables.",
+  applyBaselineButton: "Apply Baseline Preset",
+  baselineApplied: "8 Mbps H.264 Baseline preset applied",
+  forceWaylandOption: "Force Native Wayland (SDL_VIDEODRIVER=wayland)",
+  forceWaylandDesc: "Bypasses XWayland on Linux / Hyprland to test if vsync pacing improves.",
+  videoBufferOption: "Video Jitter Buffer",
+  videoBufferJitterDesc: "Default is 0 ms for lowest latency; test 10 ms or 20 ms to absorb USB packet jitter.",
+  guideTitle: "Root-Cause Isolator: Video Lag vs Input Backpressure",
+  guideStep1Title: "Test 1: Physical Touch vs WASD Input",
+  guideStep1Desc: "When latency appears, tap your phone directly. If the phone reacts instantly while the monitor delays, the issue is Video/Render. If the phone itself reacts late to WASD, the bottleneck is UHID / Mapper queue.",
+  guideStep2Title: "Test 2: USB Negotiation & Port Health",
+  guideStep2Desc: "Verify if USB Speed is 480 Mbps. If degraded to 12 Mbps, cable or port dropped to USB 1.1.",
+  guideStep3Title: "Test 3: Thermal Pressure Correlation",
+  guideStep3Desc: "If smooth initially and stutters above 42°C, but reconnecting cable immediately restores smoothness while phone remains hot, state/queue accumulation is the primary culprit.",
 };
 
 const es: Record<keyof typeof zh, string> = {
@@ -767,6 +861,53 @@ const es: Record<keyof typeof zh, string> = {
   downloadingUpdate: "Descargando actualización...",
   updateInstalledRestart: "Actualización instalada con éxito. Reiniciando...",
   updateCheckFailed: "No se pudo comprobar actualizaciones. Inténtalo más tarde.",
+  tabDiagnostics: "Diagnóstico",
+  diagnosticsEyebrow: "Telemetría de Sesión y Diagnóstico",
+  diagnosticsTitle: "Diagnóstico de Sesión y Tirones",
+  diagnosticsSubtitle: "Monitorea a bajo coste velocidad USB, latencia ADB, presión térmica y logs scrcpy para aislar la causa del lag.",
+  adbLatencyTitle: "Latencia de Comandos ADB",
+  adbLatencySubtitle: "Tiempo de ida y vuelta al dispositivo (no mide latencia de presentación)",
+  baselineLatency: "Línea base",
+  captureFpsTitle: "Tasa de Captura",
+  captureFpsSubtitle: "Tasa de captura del encoder Android (no mide latencia en monitor)",
+  batteryTempTitle: "Temperatura de Batería",
+  thermalStatusTitle: "Presión Térmica",
+  usbLinkSpeedTitle: "Velocidad de Enlace USB",
+  usbLinkSubtitle: "Lectura directa vía sysfs en Linux",
+  reconnectCountTitle: "Reconexiones",
+  activeEncoderTitle: "Encoder de Hardware",
+  activeDecoderTitle: "Decodificador y Pantalla",
+  markStutterButton: "Marcar Tirón / Stutter",
+  markStutterTip: "Guarda un bookmark con las muestras de los 60s previos y 30s posteriores al incidente",
+  stutterMarkedNotice: "Tirón registrado con éxito (recopilando ventana de 30s posteriores)",
+  bookmarksTitle: "Incidentes de Tirones Registrados",
+  noBookmarksYet: "No se han marcado tirones en esta sesión todavía.",
+  bookmarkStateCollecting: "Recopilando ventana (+30s)",
+  bookmarkStateComplete: "Ventana completa",
+  bookmarkStateInterrupted: "Interrumpido al cerrar sesión",
+  exportDiagnosticsButton: "Exportar Diagnóstico (JSON)",
+  exportSuccess: "Reporte de diagnóstico exportado y copiado al portapapeles",
+  scrcpyLogsTitle: "Consola en Tiempo Real scrcpy (stdout + stderr)",
+  filterAll: "Todos",
+  filterWarnings: "Avisos y Errores",
+  filterEncoder: "Pipeline / Códec",
+  clearLogs: "Limpiar Vista",
+  logsEmpty: "Sin logs todavía. Inicia el espejo para ver los eventos en vivo.",
+  baselinePresetTitle: "Preset de Control Baseline",
+  baselinePresetDesc: "Aplica 1920px max, 60 FPS, H.264, 8 Mbps, Audio OFF y Buffer 0ms para aislar variables.",
+  applyBaselineButton: "Aplicar Preset de Control",
+  baselineApplied: "Preset de control 8 Mbps H.264 aplicado",
+  forceWaylandOption: "Forzar Wayland Nativo (SDL_VIDEODRIVER=wayland)",
+  forceWaylandDesc: "Bypasa XWayland en Linux / Hyprland para comprobar si elimina micro-tirones de pacing.",
+  videoBufferOption: "Buffer de Jitter de Video",
+  videoBufferJitterDesc: "Default es 0 ms para menor latencia; prueba 10 ms o 20 ms para absorber jitter USB.",
+  guideTitle: "Guía de Aislamiento: ¿Delay de Video o Cola de Input?",
+  guideStep1Title: "Prueba 1: Toque Físico vs WASD",
+  guideStep1Desc: "Cuando sientas delay, toca la pantalla del teléfono. Si el teléfono reacciona al instante pero el monitor va tarde, está en Video/Render. Si en el teléfono WASD también va tarde, está en la cola UHID / Mapper.",
+  guideStep2Title: "Prueba 2: Negociación USB y Puerto",
+  guideStep2Desc: "Verifica que marque 480 Mbps. Si cae a 12 Mbps, el cable o puerto degradó la conexión a USB 1.1.",
+  guideStep3Title: "Prueba 3: Correlación con Temperatura",
+  guideStep3Desc: "Si empieza bien y empeora a más de 42°C, pero reconectar el cable restaura la fluidez de inmediato estando caliente, la causa principal es acumulación de colas y no thermal throttling puro.",
 };
 
 export type MessageKey = keyof typeof zh;

@@ -1,5 +1,19 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { ActivationResult, Device, DeviceMemoryStats, EnvironmentStatus, GameBoostResult, MirrorOptions, MirrorState, PhoneProcessInfo, SystemStats } from "./types";
+import type {
+  ActivationResult,
+  Device,
+  DeviceMemoryStats,
+  EnvironmentStatus,
+  GameBoostResult,
+  MirrorOptions,
+  MirrorState,
+  PhoneProcessInfo,
+  ScrcpyLogEntry,
+  SessionDiagnostics,
+  SessionSample,
+  StutterBookmark,
+  SystemStats,
+} from "./types";
 
 function invokeDesktop<T>(command: string, args?: Record<string, unknown>) {
   if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
@@ -24,5 +38,14 @@ export const desktopApi = {
   state: () => invokeDesktop<MirrorState>("mirror_state"),
   fps: () => invokeDesktop<number | null>("mirror_fps"),
   systemStats: () => invokeDesktop<SystemStats>("system_stats"),
-  terminateProcess: (pid: number) => invokeDesktop<void>("terminate_process", { pid })
+  terminateProcess: (pid: number) => invokeDesktop<void>("terminate_process", { pid }),
+
+  // ── Session Diagnostics & Stutter Toolkit ─────────────────────────────────
+  sessionDiagnostics: () => invokeDesktop<SessionDiagnostics | null>("get_session_diagnostics"),
+  sessionSamples: (limit?: number) => invokeDesktop<SessionSample[]>("get_session_samples", { limit }),
+  markStutter: () => invokeDesktop<StutterBookmark | null>("mark_stutter"),
+  stutterBookmarks: () => invokeDesktop<StutterBookmark[]>("get_stutter_bookmarks"),
+  exportDiagnostics: (logs: ScrcpyLogEntry[]) => invokeDesktop<string>("export_diagnostics_json", { logs }),
+  scrcpyLogs: (limit?: number) => invokeDesktop<ScrcpyLogEntry[]>("get_scrcpy_logs", { limit }),
+  clearScrcpyLogs: () => invokeDesktop<void>("clear_scrcpy_logs"),
 };

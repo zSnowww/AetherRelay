@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Session Diagnostics & Stutter/Delay Testing Toolkit**:
+  - **Dual-Pipe Real-Time Telemetry**: Multi-threaded concurrent draining of scrcpy `stdout` and `stderr` into an in-memory 500-line ring buffer (`ScrcpyLogEntry`), eliminating telemetry blindness and pipe deadlocks.
+  - **Staggered Probe Coordinator**: Independent low-overhead probes with strict timeouts and child process reaping for ADB command latency (every 2s, 1.5s timeout), battery temperature & 7-level Android `ThermalStatus` (every 4s), and Linux sysfs USB link speed negotiation (`/sys/bus/usb/devices/<port>/speed`) with transport ID reconnect tracking (every 10s).
+  - **Stutter Incident Bookmarking**: 1-click and global hotkey (`Ctrl+Shift+S`) incident marker capturing samples from -60s prior and deferred +30s following windows (`BookmarkState::Collecting` -> `Complete` or `Interrupted`).
+  - **Video Pipeline Telemetry**: Auto-detection of Android hardware encoder (`c2.qti.avc.encoder`), host video decoder, display backend (Wayland vs Auto), and observed dropped frame warnings.
+  - **Controlled Test Baseline & Display Tuning**: 1-click control preset (1920 px max, 60 FPS, H.264, 8 Mbps, Audio OFF, buffer 0 ms), native Wayland toggle (`SDL_VIDEODRIVER=wayland`), and video jitter buffer selector (0 ms, 10 ms, 20 ms).
+  - **Privacy-Preserving JSON Exporter**: Schema v1 diagnostic exporter with automatic serial number masking (`ATE***383`) and personal filesystem path redaction.
+  - **Interactive Root-Cause Isolator**: Step-by-step diagnostic guide to isolate display latency versus UHID input queue backpressure.
+  - **Full Tri-lingual Localization**: Complete UI translations across Spanish (`es`), English (`en`), and Chinese (`zh-CN`).
+
 ## [0.2.0] - 2026-10-10
 
 ### Added

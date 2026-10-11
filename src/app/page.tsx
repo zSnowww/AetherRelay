@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CircleStop, Globe, MonitorPlay, Zap, ZapOff, Activity, SlidersHorizontal } from "lucide-react";
+import { CircleStop, Globe, MonitorPlay, Zap, ZapOff, Activity, SlidersHorizontal, Gauge } from "lucide-react";
 import { desktopApi } from "../api";
 import { detectLocale, localizeBackendError, translate, type Locale, type MessageKey } from "../i18n";
 import packageMetadata from "../../package.json";
@@ -13,6 +13,7 @@ import { SettingsPanel } from "../components/SettingsPanel";
 import { ShortcutsPanel } from "../components/ShortcutsPanel";
 import { PerformancePanel } from "../components/PerformancePanel";
 import { PreferencesPanel, THEME_PALETTES } from "../components/PreferencesPanel";
+import { DiagnosticsPanel } from "../components/DiagnosticsPanel";
 import { FpsHud } from "../components/FpsHud";
 import { ActivationModal } from "../components/ActivationModal";
 import { ToastContainer } from "../components/ToastContainer";
@@ -35,7 +36,7 @@ export default function Page() {
   const [options, setOptions] = useState(defaults);
   const [busy, setBusy] = useState(false);
   const [showDeviceHelp, setShowDeviceHelp] = useState(false);
-  const [activeView, setActiveView] = useState<"mirror" | "performance" | "preferences">("mirror");
+  const [activeView, setActiveView] = useState<"mirror" | "performance" | "preferences" | "diagnostics">("mirror");
   const [notice, setNotice] = useState<Notice>({ key: "checkingEnvironment" });
   
   // Activation state & tracking
@@ -347,6 +348,7 @@ export default function Page() {
         <button className={activeView === "mirror" ? "active" : ""} onClick={() => setActiveView("mirror")}><MonitorPlay size={15} />{t("tabMirror")}</button>
         <button className={activeView === "performance" ? "active" : ""} onClick={() => setActiveView("performance")}><Activity size={15} />{t("tabPerformance")}</button>
         <button className={activeView === "preferences" ? "active" : ""} onClick={() => setActiveView("preferences")}><SlidersHorizontal size={15} />{t("tabPreferences")}</button>
+        <button className={activeView === "diagnostics" ? "active" : ""} onClick={() => setActiveView("diagnostics")}><Gauge size={15} />{t("tabDiagnostics")}</button>
       </nav>
 
       {activeView === "mirror" && <>
@@ -451,6 +453,16 @@ export default function Page() {
           onThemeChange={applyTheme}
           onNotify={addToast}
           t={t}
+        />
+      )}
+      {activeView === "diagnostics" && (
+        <DiagnosticsPanel
+          t={t}
+          selectedSerial={options.serial}
+          options={options}
+          setOptions={setOptions}
+          mirrorRunning={mirror.running}
+          onNotify={addToast}
         />
       )}
       <FpsHud active={mirror.running} />

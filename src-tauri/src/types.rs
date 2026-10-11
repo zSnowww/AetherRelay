@@ -78,6 +78,10 @@ pub(crate) struct MirrorOptions {
     pub(crate) audio_codec: Option<String>,
     #[serde(default)]
     pub(crate) audio_buffer_ms: Option<u32>,
+    #[serde(default)]
+    pub(crate) video_buffer_ms: Option<u32>,
+    #[serde(default)]
+    pub(crate) force_wayland: Option<bool>,
 }
 
 #[derive(Serialize)]
@@ -199,4 +203,170 @@ pub(crate) struct GameBoostResult {
     pub(crate) after: DeviceMemoryStats,
     pub(crate) stopped_packages: Vec<String>,
     pub(crate) protected_foreground_package: Option<String>,
+}
+
+// ── Diagnostic / telemetry types ──────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum ProbeStatus {
+    Ok,
+    Timeout,
+    Unavailable,
+    Unsupported,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum BookmarkState {
+    Collecting,
+    Complete,
+    Interrupted,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum ThermalStatus {
+    None,
+    Light,
+    Moderate,
+    Severe,
+    Critical,
+    Emergency,
+    Shutdown,
+    Unknown(i32),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct VideoPipelineMetadata {
+    pub(crate) encoder: Option<String>,
+    pub(crate) decoder: Option<String>,
+    pub(crate) hardware_decoding: Option<bool>,
+    pub(crate) renderer: Option<String>,
+    pub(crate) display_backend: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SessionMetadata {
+    pub(crate) session_id: String,
+    pub(crate) started_at_ms: u64,
+    pub(crate) started_at_utc: String,
+    pub(crate) ended_at_ms: Option<u64>,
+    pub(crate) exit_reason: Option<String>,
+    pub(crate) device_serial: String,
+    pub(crate) scrcpy_version: Option<String>,
+    pub(crate) pipeline: VideoPipelineMetadata,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DeviceDiagnostics {
+    pub(crate) battery_temp_c: Option<f32>,
+    pub(crate) battery_temp_status: ProbeStatus,
+    pub(crate) thermal_status: Option<ThermalStatus>,
+    pub(crate) thermal_status_status: ProbeStatus,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TransportDiagnostics {
+    pub(crate) adb_command_latency_ms: Option<u32>,
+    pub(crate) adb_latency_status: ProbeStatus,
+    pub(crate) latency_baseline_ms: Option<u32>,
+    pub(crate) usb_speed_mbps: Option<u32>,
+    pub(crate) usb_speed_status: ProbeStatus,
+    pub(crate) usb_path: Option<String>,
+    pub(crate) transport_id: Option<String>,
+    pub(crate) reconnect_count: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ScrcpyDiagnostics {
+    pub(crate) capture_fps: Option<u32>,
+    pub(crate) warning_count: u32,
+    pub(crate) observed_dropped_frames: Option<u32>,
+    pub(crate) session_duration_ms: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SessionDiagnostics {
+    pub(crate) metadata: SessionMetadata,
+    pub(crate) device: DeviceDiagnostics,
+    pub(crate) transport: TransportDiagnostics,
+    pub(crate) scrcpy: ScrcpyDiagnostics,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SessionSample {
+    pub(crate) elapsed_ms: u64,
+    pub(crate) adb_command_latency_ms: Option<u32>,
+    pub(crate) adb_latency_status: ProbeStatus,
+    pub(crate) capture_fps: Option<u32>,
+    pub(crate) battery_temp_c: Option<f32>,
+    pub(crate) battery_temp_status: ProbeStatus,
+    pub(crate) thermal_status: Option<ThermalStatus>,
+    pub(crate) thermal_status_status: ProbeStatus,
+    pub(crate) usb_speed_mbps: Option<u32>,
+    pub(crate) usb_speed_status: ProbeStatus,
+    pub(crate) warnings_since_last_sample: u32,
+    pub(crate) is_stutter_mark: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct StutterBookmark {
+    pub(crate) id: String,
+    pub(crate) elapsed_ms: u64,
+    pub(crate) time_utc: String,
+    pub(crate) state: BookmarkState,
+    pub(crate) latency_at_mark_ms: Option<u32>,
+    pub(crate) baseline_latency_ms: Option<u32>,
+    pub(crate) fps_at_mark: Option<u32>,
+    pub(crate) temp_at_mark_c: Option<f32>,
+    pub(crate) thermal_status: Option<ThermalStatus>,
+    pub(crate) usb_speed_mbps: Option<u32>,
+    pub(crate) window_samples: Vec<SessionSample>,
+    pub(crate) recent_warnings: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum ScrcpyLogSource {
+    Client,
+    Server,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum ScrcpyLogLevel {
+    Info,
+    Warn,
+    Error,
+    Debug,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ScrcpyLogEntry {
+    pub(crate) elapsed_ms: u64,
+    pub(crate) source: ScrcpyLogSource,
+    pub(crate) level: ScrcpyLogLevel,
+    pub(crate) message: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DiagnosticsExport {
+    pub(crate) schema_version: u32,
+    pub(crate) exported_at_utc: String,
+    pub(crate) metadata: SessionMetadata,
+    pub(crate) summary: SessionDiagnostics,
+    pub(crate) samples: Vec<SessionSample>,
+    pub(crate) bookmarks: Vec<StutterBookmark>,
+    pub(crate) recent_logs: Vec<ScrcpyLogEntry>,
 }
