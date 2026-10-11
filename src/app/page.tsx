@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CircleStop, Globe, MonitorPlay, Zap, ZapOff, Activity, SlidersHorizontal, Gauge } from "lucide-react";
-import { desktopApi } from "../api";
+import { desktopApi, onStutterMarked } from "../api";
 import { detectLocale, localizeBackendError, translate, type Locale, type MessageKey } from "../i18n";
 import packageMetadata from "../../package.json";
 import { useDevices } from "../hooks/useDevices";
@@ -98,6 +98,36 @@ export default function Page() {
   useEffect(() => { localStorage.setItem("aether-relay-options", JSON.stringify(options)); }, [options]);
 
   const t = useCallback((key: MessageKey, values?: Record<string, string | number>) => translate(locale, key, values), [locale]);
+
+  // Global listener for stutter marking events (IPC socket, CLI, or UI)
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void onStutterMarked(() => {
+      addToast({
+        type: "warning",
+        tag: "STUTTER",
+        title: t("markStutterButton"),
+        message: t("stutterMarkedNotice"),
+      });
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, [addToast, t]);
+
+  // Global hotkey: Ctrl+Shift+S or Mod+Shift+S while anywhere in Aether Relay
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === "KeyS") {
+        e.preventDefault();
+        void desktopApi.markStutter();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const refresh = useCallback(async () => {
     setBusy(true);

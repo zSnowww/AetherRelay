@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   ActivationResult,
   Device,
@@ -49,3 +50,12 @@ export const desktopApi = {
   scrcpyLogs: (limit?: number) => invokeDesktop<ScrcpyLogEntry[]>("get_scrcpy_logs", { limit }),
   clearScrcpyLogs: () => invokeDesktop<void>("clear_scrcpy_logs"),
 };
+
+export function onStutterMarked(callback: () => void): Promise<UnlistenFn> {
+  if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
+    return Promise.resolve(() => {});
+  }
+  return listen("stutter-marked", () => {
+    callback();
+  });
+}

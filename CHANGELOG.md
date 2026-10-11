@@ -10,15 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Session Diagnostics & Stutter/Delay Testing Toolkit**:
   - **Dual-Pipe Real-Time Telemetry**: Multi-threaded concurrent draining of scrcpy `stdout` and `stderr` into an in-memory 500-line ring buffer (`ScrcpyLogEntry`), eliminating telemetry blindness and pipe deadlocks.
-  - **Staggered Probe Coordinator**: Independent low-overhead probes with strict timeouts and child process reaping for ADB command latency (every 2s, 1.5s timeout), battery temperature & 7-level Android `ThermalStatus` (every 4s), and Linux sysfs USB link speed negotiation (`/sys/bus/usb/devices/<port>/speed`) with transport ID reconnect tracking (every 10s).
-  - **Stutter Incident Bookmarking**: 1-click and global hotkey (`Ctrl+Shift+S`) incident marker capturing samples from -60s prior and deferred +30s following windows (`BookmarkState::Collecting` -> `Complete` or `Interrupted`).
-  - **Video Pipeline Telemetry**: Auto-detection of Android hardware encoder (`c2.qti.avc.encoder`), host video decoder, display backend (Wayland vs Auto), and observed dropped frame warnings.
+  - **Staggered Probe Coordinator**: Independent low-overhead probes with strict timeouts, background stdout draining (128 KB cap), and child process reaping for ADB command latency (every 2s, 1.5s timeout), battery temperature & 7-level Android `ThermalStatus` (every 4s), and Linux sysfs USB link speed negotiation (`/sys/bus/usb/devices/<port>/speed`) with transport ID reconnect tracking (every 10s).
+  - **Stutter Incident Bookmarking**: 1-click and global hotkey incident marker capturing samples from -60s prior and deferred +30s following windows (`BookmarkState::Collecting` -> `Complete` or `Interrupted`).
+  - **Global IPC Compositor Integration**: Added local IPC socket and `--mark-stutter` CLI trigger (`aether-relay --mark-stutter`), enabling seamless Hyprland/Wayland compositor keybindings during full-screen gameplay without window focus.
+  - **Video Pipeline Telemetry**: Auto-detection of Android hardware encoder, host video decoder, display backend (Wayland vs Auto), and observed dropped frame warnings parsed across both stdout and stderr.
   - **Controlled Test Baseline & Display Tuning**: 1-click control preset (1920 px max, 60 FPS, H.264, 8 Mbps, Audio OFF, buffer 0 ms), native Wayland toggle (`SDL_VIDEODRIVER=wayland`), and video jitter buffer selector (0 ms, 10 ms, 20 ms).
-  - **Privacy-Preserving JSON Exporter**: Schema v1 diagnostic exporter with automatic serial number masking (`ATE***383`) and personal filesystem path redaction.
+  - **Privacy-Preserving JSON Exporter**: Schema v1 diagnostic exporter with automatic serial number masking, IPv4 LAN masking, and personal filesystem path redaction (Windows `%USERPROFILE%` and Linux `$HOME`).
   - **Interactive Root-Cause Isolator**: Step-by-step diagnostic guide to isolate display latency versus UHID input queue backpressure.
   - **Full Tri-lingual Localization**: Complete UI translations across Spanish (`es`), English (`en`), and Chinese (`zh-CN`).
 
+### Changed
+- **Eliminated HUD Mock & Fallback Metrics**: Replaced misleading fallback values (60 FPS, 480 Mbps, hardcoded Qualcomm encoder) with truthful `—` / `N/A` indicators when telemetry has not yet been measured or is unavailable.
+- **Separated Host Decoder from Display Backend**: Split display backend (Wayland / Auto) and hardware video decoder into distinct metadata fields.
+- **Decoupled Diagnostic Export Download**: Separated clipboard copy from JSON file download so clipboard permission denials on Wayland never block report downloads.
+
 ### Fixed
+- **Unified Scrcpy Telemetry with Session Diagnostics**: Linked `TelemetryInner` state directly to `SessionTracker`, ensuring live capture FPS, warning counts, and dropped frames are accurately recorded in session snapshots, historical samples, and stutter bookmarks.
+- **Concurrent Collecting Bookmarks**: Replaced single active bookmark ID with concurrent updates across all active `BookmarkState::Collecting` instances, allowing rapid consecutive markers to capture their full deferred windows independently.
+- **ADB Pipe Buffer Deadlock Prevention**: Drained probe child stdout concurrently in dedicated threads with a 128 KB limit, preventing OS pipe buffer full deadlocks on large `dumpsys` outputs.
+- **Monotonic Probe Interval Deadlines**: Switched probe scheduler to `Instant`-based deadlines, eliminating measurement interval drift caused by slow probes.
+- **Timeline Stutter Visual Markers**: Derived visual sparkline incident markers from `StutterBookmark.elapsedMs` and flagged samples, ensuring all marked incidents display prominently on the latency graph.
 - **Auto-Updater Check Resolution**: Resolved `Could not check for updates` failure caused by missing `latest.json` release manifest on GitHub Releases, and added graceful fallback handling in `PreferencesPanel` for 404/ReleaseNotFound states when running the latest release version.
 
 ## [0.2.0] - 2026-10-10

@@ -20,14 +20,60 @@ mod types;
 use diagnostics::DiagnosticsState;
 use scrcpy::{MirrorProcess, MirrorTelemetry};
 
+pub fn trigger_mark_stutter_cli() {
+    #[cfg(unix)]
+    {
+        let sock_path = std::env::var("XDG_RUNTIME_DIR")
+            .map(|d| format!("{d}/aether-relay-ipc.sock"))
+            .unwrap_or_else(|_| "/tmp/aether-relay-ipc.sock".to_string());
+        use std::io::{Read, Write};
+        match std::os::unix::net::UnixStream::connect(&sock_path) {
+            Ok(mut stream) => {
+                let _ = stream.write_all(b"MARK_STUTTER\n");
+                let mut resp = String::new();
+                let _ = stream.read_to_string(&mut resp);
+                println!("{}", resp.trim());
+            }
+            Err(e) => {
+                eprintln!("Aether Relay is not running or IPC unavailable: {e}");
+                std::process::exit(1);
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        use std::io::{Read, Write};
+        match std::net::TcpStream::connect("127.0.0.1:42427") {
+            Ok(mut stream) => {
+                let _ = stream.write_all(b"MARK_STUTTER\n");
+                let mut resp = String::new();
+                let _ = stream.read_to_string(&mut resp);
+                println!("{}", resp.trim());
+            }
+            Err(e) => {
+                eprintln!("Aether Relay is not running or IPC unavailable: {e}");
+                std::process::exit(1);
+            }
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let diag_state = DiagnosticsState::default();
+    let diag_inner = diag_state.0.clone();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(MirrorProcess::default())
         .manage(MirrorTelemetry::default())
-        .manage(DiagnosticsState::default())
+        .manage(diag_state)
+        .setup(move |app| {
+            let handle = app.handle().clone();
+            diagnostics::start_ipc_listener(handle, diag_inner);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             tools::check_environment,
             adb::list_devices,

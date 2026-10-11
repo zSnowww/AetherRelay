@@ -22,7 +22,7 @@ import {
   Usb,
   Zap,
 } from "lucide-react";
-import { desktopApi } from "../api";
+import { desktopApi, onStutterMarked } from "../api";
 import type {
   MirrorOptions,
   ProbeStatus,
@@ -87,6 +87,19 @@ export function DiagnosticsPanel({
     return () => clearInterval(interval);
   }, [fetchTelemetry]);
 
+  // Listen for global compositor mark-stutter triggers via IPC / Tauri event
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void onStutterMarked(() => {
+      void fetchTelemetry();
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, [fetchTelemetry]);
+
   // Auto-scroll log console
   useEffect(() => {
     if (autoScroll && logConsoleRef.current) {
@@ -119,18 +132,6 @@ export function DiagnosticsPanel({
     }
   }, [fetchTelemetry, onNotify, t]);
 
-  // Global Keyboard Shortcut: Ctrl+Shift+S or Mod+Shift+S to mark stutter while in game
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === "KeyS") {
-        e.preventDefault();
-        void handleMarkStutter();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleMarkStutter]);
-
   // ── Apply Baseline Preset (8 Mbps, 60fps, H.264, buffer 0, audio OFF) ─────
   const applyBaselinePreset = useCallback(() => {
     setOptions((prev) => ({
@@ -156,9 +157,15 @@ export function DiagnosticsPanel({
   const exportDiagnosticsJson = useCallback(async () => {
     try {
       const json = await desktopApi.exportDiagnostics(logs);
-      await navigator.clipboard.writeText(json);
-      setCopiedExport(true);
-      setTimeout(() => setCopiedExport(false), 2000);
+
+      // Decouple clipboard write from file download so permission issues never block download
+      try {
+        await navigator.clipboard.writeText(json);
+        setCopiedExport(true);
+        setTimeout(() => setCopiedExport(false), 2000);
+      } catch {
+        // Clipboard write can fail in un-focused webviews or Wayland compositors
+      }
 
       // Create download blob
       const blob = new Blob([json], { type: "application/json" });
@@ -274,6 +281,7 @@ export function DiagnosticsPanel({
       <svg width={width} height={height} style={{ overflow: "visible" }}>
         <polyline fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" points={points} />
         {marks.map((idx, i) => {
+          if (idx < 0 || idx >= data.length) return null;
           const x = (idx / (data.length - 1)) * width;
           const val = data[idx] ?? min;
           const y = height - ((val - min) / range) * (height - 8) - 4;
@@ -284,14 +292,40 @@ export function DiagnosticsPanel({
   };
 
   const latencyHistory = useMemo(() => {
-    return samples.map((s) => s.adbCommandLatencyMs ?? 0).filter((v) => v > 0);
+    return samples.map((s) => s.adbCommandLatencyMs ?? 0);
   }, [samples]);
 
   const stutterMarkIndices = useMemo(() => {
-    return samples
-      .map((s, idx) => (s.isStutterMark ? idx : -1))
-      .filter((idx) => idx !== -1);
-  }, [samples]);
+    if (samples.length === 0) return [];
+    const markIndices = new Set<number>();
+
+    // 1. Direct sample flags
+    samples.forEach((s, idx) => {
+      if (s.isStutterMark) {
+        markIndices.add(idx);
+      }
+    });
+
+    // 2. Correlate from StutterBookmarks using elapsedMs
+    for (const b of bookmarks) {
+      if (b.elapsedMs === undefined || b.elapsedMs === null) continue;
+      let closestIdx = -1;
+      let minDiff = Infinity;
+      for (let i = 0; i < samples.length; i++) {
+        const sampleElapsed = samples[i]?.elapsedMs ?? 0;
+        const diff = Math.abs(sampleElapsed - b.elapsedMs);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestIdx = i;
+        }
+      }
+      if (closestIdx !== -1 && minDiff <= 3000) {
+        markIndices.add(closestIdx);
+      }
+    }
+
+    return Array.from(markIndices).sort((a, b) => a - b);
+  }, [samples, bookmarks]);
 
   const currentLatency = session?.transport.adbCommandLatencyMs;
   const baselineLatency = session?.transport.latencyBaselineMs;
@@ -305,6 +339,9 @@ export function DiagnosticsPanel({
           <span className="section-eyebrow">{t("diagnosticsEyebrow")}</span>
           <h2>{t("diagnosticsTitle")}</h2>
           <p>{t("diagnosticsSubtitle")}</p>
+          <small className="compositor-hint" style={{ display: "inline-block", marginTop: "4px", color: "var(--text-muted, #94a3b8)", fontSize: "0.78rem" }}>
+            💡 {t("compositorBindHint")}
+          </small>
         </div>
         <div className="diagnostics-actions-header">
           {/* Prominent Mark Stutter Button */}
@@ -373,7 +410,9 @@ export function DiagnosticsPanel({
           </div>
           <div className="hud-main-metric">
             <span className="metric-value">
-              {session?.scrcpy.captureFps ? `${session.scrcpy.captureFps} FPS` : mirrorRunning ? "60 FPS" : "—"}
+              {session?.scrcpy.captureFps !== null && session?.scrcpy.captureFps !== undefined
+                ? `${session.scrcpy.captureFps} FPS`
+                : "—"}
             </span>
           </div>
           <div className="hud-sub-metric">
@@ -436,7 +475,7 @@ export function DiagnosticsPanel({
                 session?.transport.usbSpeedMbps && session.transport.usbSpeedMbps < 400 ? "bad" : ""
               }`}
             >
-              {session?.transport.usbSpeedMbps ? `${session.transport.usbSpeedMbps} Mbps` : "480 Mbps"}
+              {session?.transport.usbSpeedMbps ? `${session.transport.usbSpeedMbps} Mbps` : "—"}
             </span>
             {session?.transport.usbPath && <span className="usb-port-pill">{session.transport.usbPath}</span>}
           </div>
@@ -454,14 +493,21 @@ export function DiagnosticsPanel({
           <Cpu size={15} />
           <span className="item-label">{t("activeEncoderTitle")}:</span>
           <span className="item-val">
-            {session?.metadata.pipeline.encoder || "c2.qti.avc.encoder (Auto/HW)"}
+            {session?.metadata.pipeline.encoder || "—"}
+          </span>
+        </div>
+        <div className="pipeline-item">
+          <Layers size={15} />
+          <span className="item-label">{t("activeDecoderTitle")}:</span>
+          <span className="item-val">
+            {session?.metadata.pipeline.decoder || "—"}
           </span>
         </div>
         <div className="pipeline-item">
           <Monitor size={15} />
-          <span className="item-label">{t("activeDecoderTitle")}:</span>
+          <span className="item-label">{t("displayBackendTitle")}:</span>
           <span className="item-val">
-            {session?.metadata.pipeline.displayBackend || (options.forceWayland ? "Wayland (forced)" : "Auto (SDL)")}
+            {session?.metadata.pipeline.displayBackend || (options.forceWayland ? "Wayland (forced)" : "—")}
           </span>
         </div>
         <div className="pipeline-item">

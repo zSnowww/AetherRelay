@@ -77,6 +77,98 @@ pub(crate) fn parse_log_line(line: &str) -> (ScrcpyLogSource, ScrcpyLogLevel, St
     (source, level, line.to_string())
 }
 
+pub(crate) fn parse_scrcpy_stream_line(
+    line: &str,
+    elapsed_ms: u64,
+    tracker: &SessionTracker,
+    telemetry: &Arc<Mutex<TelemetryInner>>,
+) {
+    let (source, level, msg) = parse_log_line(line);
+
+    // 1. Capture FPS from print-fps lines
+    if let Some(fps_val) = fps_from_line(line) {
+        if let Ok(mut current) = telemetry.lock() {
+            current.fps = Some(fps_val);
+        }
+    }
+
+    // 2. Capture scrcpy version banner
+    if line.starts_with("scrcpy ") {
+        if let Ok(mut v) = tracker.scrcpy_version.lock() {
+            *v = Some(line.to_string());
+        }
+    }
+
+    // 3. Capture encoder (check from both stdout and stderr)
+    let lower = line.to_lowercase();
+    if line.contains("Creating encoder by name:")
+        || line.contains("--video-encoder=")
+        || line.contains("Encoder:")
+        || lower.contains("video encoder:")
+    {
+        if let Some(enc) = line
+            .split('\'')
+            .nth(1)
+            .or_else(|| line.split(':').next_back())
+            .or_else(|| line.split('=').nth(1))
+        {
+            let clean = enc.split_whitespace().next().unwrap_or(enc.trim());
+            if !clean.is_empty() && !clean.contains("INFO") && !clean.contains("DEBUG") {
+                if let Ok(mut p) = tracker.pipeline.lock() {
+                    p.encoder = Some(clean.to_string());
+                }
+            }
+        }
+    }
+
+    // 4. Capture decoder
+    if line.contains("Using decoder")
+        || line.contains("Decoder:")
+        || lower.contains("video decoder:")
+    {
+        if let Ok(mut p) = tracker.pipeline.lock() {
+            p.decoder = Some(line.trim().to_string());
+            p.hardware_decoding = Some(!lower.contains("software"));
+        }
+    }
+
+    // 5. Capture renderer & video display driver
+    if line.contains("Renderer:") {
+        if let Ok(mut p) = tracker.pipeline.lock() {
+            p.renderer = Some(line.trim().to_string());
+        }
+    }
+    if line.contains("SDL video driver:") || line.contains("Video driver:") {
+        if let Ok(mut p) = tracker.pipeline.lock() {
+            p.display_backend = Some(line.trim().to_string());
+        }
+    }
+
+    // 6. Track dropped frames and warning counts
+    let is_drop = line.contains("Dropping frame");
+    let is_warn = level == ScrcpyLogLevel::Warn || level == ScrcpyLogLevel::Error;
+
+    if let Ok(mut current) = telemetry.lock() {
+        if is_drop {
+            let prev = current.observed_dropped_frames.unwrap_or(0);
+            current.observed_dropped_frames = Some(prev + 1);
+        }
+        if is_warn {
+            current.warning_count = current.warning_count.saturating_add(1);
+        }
+
+        if current.logs.len() >= 500 {
+            current.logs.pop_front();
+        }
+        current.logs.push_back(ScrcpyLogEntry {
+            elapsed_ms,
+            source,
+            level,
+            message: msg,
+        });
+    }
+}
+
 // ── Commands ──────────────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -253,7 +345,10 @@ pub(crate) fn start_mirror(
     }
 
     // Set up new session tracker & telemetry worker
-    let tracker = Arc::new(SessionTracker::new(options.serial.clone()));
+    let tracker = Arc::new(SessionTracker::new(
+        options.serial.clone(),
+        telemetry_arc.clone(),
+    ));
     if options.force_wayland == Some(true) {
         if let Ok(mut pipe) = tracker.pipeline.lock() {
             pipe.display_backend = Some("Wayland (forced)".into());
@@ -271,99 +366,26 @@ pub(crate) fn start_mirror(
     // Start background probe coordinator
     start_telemetry_worker(tracker.clone(), adb.to_string_lossy().to_string());
 
-    // ── Thread A: Drain stdout (FPS, banner, video encoder) ────────────────────
+    // ── Thread A: Drain stdout ────────────────────────────────────────────────
     if let Some(stdout) = child.stdout.take() {
         let t_inner = telemetry_arc.clone();
         let tracker_stdout = tracker.clone();
         thread::spawn(move || {
             for line in BufReader::new(stdout).lines().map_while(Result::ok) {
                 let elapsed = tracker_stdout.elapsed_ms();
-                let (source, level, msg) = parse_log_line(&line);
-
-                if let Some(fps_val) = fps_from_line(&line) {
-                    if let Ok(mut current) = t_inner.lock() {
-                        current.fps = Some(fps_val);
-                    }
-                }
-
-                // Check version
-                if line.starts_with("scrcpy ") {
-                    if let Ok(mut v) = tracker_stdout.scrcpy_version.lock() {
-                        *v = Some(line.clone());
-                    }
-                }
-
-                // Check encoder
-                if line.contains("Creating encoder by name:") || line.contains("--video-encoder=") {
-                    if let Some(enc) = line.split('\'').nth(1).or_else(|| line.split('=').nth(1)) {
-                        let clean = enc.split_whitespace().next().unwrap_or(enc);
-                        if let Ok(mut p) = tracker_stdout.pipeline.lock() {
-                            p.encoder = Some(clean.to_string());
-                        }
-                    }
-                }
-
-                // Check decoder
-                if line.contains("Using decoder") || line.contains("Decoder:") {
-                    if let Ok(mut p) = tracker_stdout.pipeline.lock() {
-                        p.decoder = Some(line.clone());
-                        p.hardware_decoding = Some(!line.to_lowercase().contains("software"));
-                    }
-                }
-
-                // Check renderer
-                if line.contains("Renderer:") {
-                    if let Ok(mut p) = tracker_stdout.pipeline.lock() {
-                        p.renderer = Some(line.clone());
-                    }
-                }
-
-                if let Ok(mut current) = t_inner.lock() {
-                    if current.logs.len() >= 500 {
-                        current.logs.pop_front();
-                    }
-                    current.logs.push_back(ScrcpyLogEntry {
-                        elapsed_ms: elapsed,
-                        source,
-                        level,
-                        message: msg,
-                    });
-                }
+                parse_scrcpy_stream_line(&line, elapsed, &tracker_stdout, &t_inner);
             }
         });
     }
 
-    // ── Thread B: Drain stderr (warnings, frame drops, server errors) ──────────
+    // ── Thread B: Drain stderr ────────────────────────────────────────────────
     if let Some(stderr) = child.stderr.take() {
         let t_inner = telemetry_arc.clone();
         let tracker_stderr = tracker.clone();
         thread::spawn(move || {
             for line in BufReader::new(stderr).lines().map_while(Result::ok) {
                 let elapsed = tracker_stderr.elapsed_ms();
-                let (source, level, msg) = parse_log_line(&line);
-
-                let is_drop = line.contains("Dropping frame");
-                let is_warn = level == ScrcpyLogLevel::Warn || level == ScrcpyLogLevel::Error;
-
-                if let Ok(mut current) = t_inner.lock() {
-                    if is_drop {
-                        let prev = current.observed_dropped_frames.unwrap_or(0);
-                        current.observed_dropped_frames = Some(prev + 1);
-                    }
-                    if is_warn {
-                        current.warning_count = current.warning_count.saturating_add(1);
-                    }
-
-                    if current.logs.len() >= 500 {
-                        current.logs.pop_front();
-                    }
-                    current.logs.push_back(ScrcpyLogEntry {
-                        elapsed_ms: elapsed,
-                        source,
-                        level,
-                        message: msg,
-                    });
-                }
+                parse_scrcpy_stream_line(&line, elapsed, &tracker_stderr, &t_inner);
             }
         });
     }
@@ -504,5 +526,49 @@ mod tests {
         let (src, lvl, _) = parse_log_line("[server] ERROR: Decoder failed");
         assert_eq!(src, ScrcpyLogSource::Server);
         assert_eq!(lvl, ScrcpyLogLevel::Error);
+    }
+
+    #[test]
+    fn parse_scrcpy_stream_extracts_metadata_from_both_stdout_and_stderr() {
+        let telemetry = Arc::new(Mutex::new(TelemetryInner::default()));
+        let tracker = Arc::new(SessionTracker::new(
+            "TEST_SERIAL_789".into(),
+            telemetry.clone(),
+        ));
+
+        // From stdout
+        parse_scrcpy_stream_line(
+            "scrcpy 3.1 <https://github.com/Genymobile/scrcpy>",
+            100,
+            &tracker,
+            &telemetry,
+        );
+        parse_scrcpy_stream_line("Capturing at 60 fps", 200, &tracker, &telemetry);
+
+        // From stderr
+        parse_scrcpy_stream_line(
+            "[server] INFO: Creating encoder by name: 'c2.qti.avc.encoder'",
+            300,
+            &tracker,
+            &telemetry,
+        );
+        parse_scrcpy_stream_line("Renderer: opengl", 400, &tracker, &telemetry);
+        parse_scrcpy_stream_line("[server] WARN: Dropping frame", 500, &tracker, &telemetry);
+
+        assert_eq!(
+            *tracker.scrcpy_version.lock().unwrap(),
+            Some("scrcpy 3.1 <https://github.com/Genymobile/scrcpy>".to_string())
+        );
+        assert_eq!(telemetry.lock().unwrap().fps, Some(60));
+        assert_eq!(
+            tracker.pipeline.lock().unwrap().encoder,
+            Some("c2.qti.avc.encoder".to_string())
+        );
+        assert_eq!(
+            tracker.pipeline.lock().unwrap().renderer,
+            Some("Renderer: opengl".to_string())
+        );
+        assert_eq!(telemetry.lock().unwrap().observed_dropped_frames, Some(1));
+        assert_eq!(telemetry.lock().unwrap().warning_count, 1);
     }
 }

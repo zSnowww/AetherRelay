@@ -265,7 +265,9 @@ const zh = {
   ,usbLinkSubtitle: "通过 Linux sysfs 实时读取"
   ,reconnectCountTitle: "重连次数"
   ,activeEncoderTitle: "硬件编码器"
-  ,activeDecoderTitle: "解码器与显示"
+  ,activeDecoderTitle: "视频解码器 (Host)"
+  ,displayBackendTitle: "显示后端 (SDL/Wayland)"
+  ,compositorBindHint: "全局快捷键 (Hyprland): bind = $mainMod SHIFT, S, exec, aether-relay --mark-stutter"
   ,markStutterButton: "标记卡顿 / Tirón"
   ,markStutterTip: "立即保存过去 60 秒与后续 30 秒的样本及日志快照"
   ,stutterMarkedNotice: "已记录卡顿标记（正在采集后续 30 秒窗口）"
@@ -572,7 +574,9 @@ const en: Record<keyof typeof zh, string> = {
   usbLinkSubtitle: "Read directly via Linux sysfs",
   reconnectCountTitle: "Reconnections",
   activeEncoderTitle: "Hardware Encoder",
-  activeDecoderTitle: "Decoder & Display",
+  activeDecoderTitle: "Host Decoder",
+  displayBackendTitle: "Display Backend",
+  compositorBindHint: "Global shortcut in-game (Hyprland): bind = $mainMod SHIFT, S, exec, aether-relay --mark-stutter",
   markStutterButton: "Mark Stutter / Incident",
   markStutterTip: "Bookmark stutter capturing -60s prior and +30s following sample window",
   stutterMarkedNotice: "Stutter incident marked (collecting +30s window)",
@@ -879,7 +883,9 @@ const es: Record<keyof typeof zh, string> = {
   usbLinkSubtitle: "Lectura directa vía sysfs en Linux",
   reconnectCountTitle: "Reconexiones",
   activeEncoderTitle: "Encoder de Hardware",
-  activeDecoderTitle: "Decodificador y Pantalla",
+  activeDecoderTitle: "Decodificador Host",
+  displayBackendTitle: "Backend de Pantalla",
+  compositorBindHint: "Atajo global en juego (Hyprland): bind = $mainMod SHIFT, S, exec, aether-relay --mark-stutter",
   markStutterButton: "Marcar Tirón / Stutter",
   markStutterTip: "Guarda un bookmark con las muestras de los 60s previos y 30s posteriores al incidente",
   stutterMarkedNotice: "Tirón registrado con éxito (recopilando ventana de 30s posteriores)",

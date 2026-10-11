@@ -12,5 +12,10 @@ fn main() {
         }
     }
 
+    if std::env::args().any(|arg| arg == "--mark-stutter") {
+        aether_relay_lib::trigger_mark_stutter_cli();
+        return;
+    }
+
     aether_relay_lib::run();
 }
