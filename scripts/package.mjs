@@ -10,5 +10,10 @@ function run(args) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
+// Gracefully terminate any running adb daemon so bundled tools/adb can be overwritten without ETXTBSY
+try {
+  spawnSync("adb", ["kill-server"], { stdio: "ignore" });
+} catch {}
+
 run(["run", "tools:prepare"]);
 run(["run", "tauri", "--", "build", ...process.argv.slice(2)]);

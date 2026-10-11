@@ -2,10 +2,16 @@
 
 use crate::tools::{hidden_command, resolve_tool};
 use crate::types::{
-    ActivationLog, ActivationResult, ActivationTarget, Device, DeviceMemoryStats,
-    PresetAppInfo, ACTIVATION_TARGETS,
+    ActivationLog, ActivationResult, ActivationTarget, Device, DeviceMemoryStats, GameBoostResult,
+    PhoneProcessInfo, PresetAppInfo, ACTIVATION_TARGETS,
 };
-use std::{path::Path, thread, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+    sync::{LazyLock, Mutex},
+    thread,
+    time::Duration,
+};
 use tauri::AppHandle;
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
@@ -163,8 +169,480 @@ pub(crate) const PRESET_BACKGROUND_APPS: &[(&str, &str, &str)] = &[
     ("firefox", "Firefox", "org.mozilla.firefox"),
 ];
 
+fn running_preset_packages(adb: &Path, serial: &str) -> Vec<String> {
+    PRESET_BACKGROUND_APPS
+        .iter()
+        .filter_map(|(_, _, package)| {
+            let output = hidden_command(adb)
+                .args(["-s", serial, "shell", "pidof", package])
+                .output()
+                .ok()?;
+            (!String::from_utf8_lossy(&output.stdout).trim().is_empty())
+                .then(|| (*package).to_string())
+        })
+        .collect()
+}
+
+/// Return a known preset app when Android reports it as the foreground app.
+/// We only need to identify apps that could otherwise be stopped by the
+/// booster, so parsing is deliberately constrained to the allow-list.
+fn foreground_preset_package(adb: &Path, serial: &str) -> Option<String> {
+    let output = hidden_command(adb)
+        .args(["-s", serial, "shell", "dumpsys", "window", "windows"])
+        .output()
+        .ok()?;
+    foreground_preset_package_from_output(&String::from_utf8_lossy(&output.stdout))
+}
+
+fn foreground_preset_package_from_output(output: &str) -> Option<String> {
+    PRESET_BACKGROUND_APPS
+        .iter()
+        .find(|(_, _, package)| {
+            output.lines().any(|line| {
+                (line.contains("mCurrentFocus") || line.contains("mFocusedApp"))
+                    && line.contains(package)
+            })
+        })
+        .map(|(_, _, package)| (*package).to_string())
+}
+
+const PROTECTED_GAME_PACKAGES: &[(&str, &str)] = &[
+    ("com.freefire.dts", "Free Fire"),
+    ("com.dts.freefireth", "Free Fire"),
+    ("com.dts.freefiremax", "Free Fire MAX"),
+    ("moe.shizuku.privileged.api", "Shizuku"),
+];
+
+fn protected_package_reason(package: &str) -> Option<String> {
+    if let Some((_, name)) = PROTECTED_GAME_PACKAGES
+        .iter()
+        .find(|(protected, _)| *protected == package)
+    {
+        return Some(format!("{name} está protegido durante la sesión de juego."));
+    }
+    if let Some(target) = ACTIVATION_TARGETS
+        .iter()
+        .find(|target| target.package_names.contains(&package))
+    {
+        return Some(format!(
+            "{} está protegido como mapper activo.",
+            target.name
+        ));
+    }
+    // Critical system infrastructure that should never be force-stopped
+    if package == "com.android.systemui" {
+        return Some("Interfaz gráfica del sistema Android (SystemUI).".to_string());
+    }
+    if package == "com.android.settings" {
+        return Some("Ajustes del sistema Android.".to_string());
+    }
+    if package == "com.android.phone" || package == "com.android.server.telecom" {
+        return Some("Servicio de telefonía y llamadas de emergencia.".to_string());
+    }
+    if package == "com.google.android.gms" {
+        return Some("Servicios de Google Play.".to_string());
+    }
+    if package.contains(".inputmethod.") || package.ends_with(".latin") {
+        return Some("Teclado activo del sistema.".to_string());
+    }
+    if package.contains("launcher") || package.ends_with(".home") {
+        return Some("Lanzador de inicio de Android.".to_string());
+    }
+    None
+}
+
+const KNOWN_APP_NAMES: &[(&str, &str)] = &[
+    ("com.dts.freefireth", "Free Fire"),
+    ("com.dts.freefiremax", "Free Fire MAX"),
+    ("com.freefire.dts", "Free Fire"),
+    ("com.panda.mouse", "Panda Mouse Pro"),
+    ("com.panda.mappinglab", "Panda Mapping Lab"),
+    ("moe.shizuku.privileged.api", "Shizuku"),
+    ("com.zhiliaoapp.musically", "TikTok"),
+    ("com.whatsapp", "WhatsApp"),
+    ("com.google.android.youtube", "YouTube"),
+    ("com.android.chrome", "Google Chrome"),
+    ("com.google.android.apps.photos", "Google Fotos"),
+    ("com.google.android.apps.messaging", "Google Mensajes"),
+    ("com.android.vending", "Google Play Store"),
+    ("com.google.android.gms", "Google Play Services"),
+    ("com.google.android.inputmethod.latin", "Gboard"),
+    ("com.google.android.googlequicksearchbox", "Google"),
+    ("com.facebook.katana", "Facebook"),
+    ("com.facebook.services", "Facebook Services"),
+    ("com.instagram.android", "Instagram"),
+    ("com.spotify.music", "Spotify"),
+    ("com.discord", "Discord"),
+    ("com.twitter.android", "X (Twitter)"),
+    ("org.mozilla.firefox", "Firefox"),
+    ("com.canva.editor", "Canva"),
+    ("com.valvesoftware.android.steam.community", "Steam"),
+    ("com.openai.chatgpt", "ChatGPT"),
+    ("org.telegram.messenger", "Telegram"),
+    ("com.bcp.innovacxion.yapeapp", "Yape"),
+    ("com.bcp.bank.bcp", "Banco BCP"),
+    ("com.bbva.nxt_peru", "BBVA Perú"),
+    ("com.supercell.clashroyale", "Clash Royale"),
+    ("com.supercell.brawlstars", "Brawl Stars"),
+    ("com.supercell.clashofclans", "Clash of Clans"),
+    ("com.activision.callofduty.shooter", "Call of Duty: Mobile"),
+    ("com.ea.gp.apexlegendsmobilefps", "Apex Legends"),
+    ("com.tencent.ig", "PUBG Mobile"),
+    ("com.miHoYo.GenshinImpact", "Genshin Impact"),
+    ("com.android.systemui", "Android System UI"),
+    ("com.android.settings", "Configuración"),
+    ("com.android.phone", "Teléfono"),
+    ("com.android.bluetooth", "Bluetooth"),
+    ("com.hihonor.android.launcher", "Honor Launcher"),
+    ("com.hihonor.systemmanager", "Honor Optimizador"),
+    ("us.zoom.videomeetings", "Zoom"),
+    ("org.localsend.localsend_app", "LocalSend"),
+    ("com.duolingo", "Duolingo"),
+    ("com.netflix.mediaclient", "Netflix"),
+    ("com.disney.disneyplus", "Disney+"),
+    ("com.waze", "Waze"),
+    ("com.pinterest", "Pinterest"),
+    ("com.pedidosya", "PedidosYa"),
+    ("com.grability.rappi", "Rappi"),
+];
+
+fn display_name_for_package(package: &str) -> String {
+    if let Some((_, name)) = KNOWN_APP_NAMES.iter().find(|(pkg, _)| *pkg == package) {
+        return (*name).to_string();
+    }
+    PRESET_BACKGROUND_APPS
+        .iter()
+        .find(|(_, _, preset)| *preset == package)
+        .map(|(_, name, _)| (*name).to_string())
+        .or_else(|| {
+            PROTECTED_GAME_PACKAGES
+                .iter()
+                .find(|(protected, _)| *protected == package)
+                .map(|(_, name)| (*name).to_string())
+        })
+        .unwrap_or_else(|| {
+            let parts: Vec<&str> = package.split('.').collect();
+            if parts.len() >= 2 {
+                let meaningful = parts
+                    .iter()
+                    .rev()
+                    .find(|p| !p.is_empty() && **p != "android" && **p != "app")
+                    .copied()
+                    .unwrap_or(parts[parts.len() - 1]);
+                let mut chars = meaningful.chars();
+                if let Some(first) = chars.next() {
+                    let capitalized: String =
+                        first.to_uppercase().collect::<String>() + chars.as_str();
+                    return capitalized.replace('_', " ");
+                }
+            }
+            package.to_string()
+        })
+}
+
+fn base64_encode(data: &[u8]) -> String {
+    const CHARSET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut result = String::with_capacity(data.len().div_ceil(3) * 4);
+    for chunk in data.chunks(3) {
+        let b0 = chunk[0] as usize;
+        let b1 = chunk.get(1).copied().unwrap_or(0) as usize;
+        let b2 = chunk.get(2).copied().unwrap_or(0) as usize;
+        let triple = (b0 << 16) | (b1 << 8) | b2;
+        result.push(CHARSET[(triple >> 18) & 0x3F] as char);
+        result.push(CHARSET[(triple >> 12) & 0x3F] as char);
+        if chunk.len() > 1 {
+            result.push(CHARSET[(triple >> 6) & 0x3F] as char);
+        } else {
+            result.push('=');
+        }
+        if chunk.len() > 2 {
+            result.push(CHARSET[triple & 0x3F] as char);
+        } else {
+            result.push('=');
+        }
+    }
+    result
+}
+
+fn find_best_icon_entry(unzip_list: &str) -> Option<String> {
+    let mut candidates: Vec<(u8, String)> = Vec::new();
+    for line in unzip_list.lines() {
+        let line = line.trim();
+        let Some(path) = line.split_whitespace().last() else {
+            continue;
+        };
+        let lower = path.to_lowercase();
+        if (!lower.ends_with(".png") && !lower.ends_with(".webp")) || lower.ends_with(".9.png") {
+            continue;
+        }
+
+        let mut score: u8 = 0;
+        if lower.contains("ic_launcher") || lower.contains("app_icon") {
+            score += 50;
+        } else if lower.contains("launcher") || lower.contains("icon") {
+            score += 20;
+        } else {
+            continue;
+        }
+
+        if lower.contains("xxxhdpi") {
+            score += 30;
+        } else if lower.contains("xxhdpi") {
+            score += 25;
+        } else if lower.contains("xhdpi") {
+            score += 20;
+        } else if lower.contains("hdpi") {
+            score += 15;
+        } else if lower.contains("mdpi") {
+            score += 10;
+        }
+
+        if lower.contains("foreground") || lower.contains("background") {
+            score = score.saturating_sub(15);
+        }
+
+        candidates.push((score, path.to_string()));
+    }
+
+    candidates.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+    candidates.into_iter().map(|(_, path)| path).next()
+}
+
+fn extract_package_icon(adb: &Path, serial: &str, package: &str) -> Option<String> {
+    let output = hidden_command(adb)
+        .args(["-s", serial, "shell", "pm", "path", package])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let apk_path = stdout
+        .lines()
+        .filter_map(|l| l.trim().strip_prefix("package:"))
+        .find(|p| p.ends_with("base.apk"))
+        .or_else(|| {
+            stdout
+                .lines()
+                .filter_map(|l| l.trim().strip_prefix("package:"))
+                .next()
+        })?;
+
+    let list_output = hidden_command(adb)
+        .args(["-s", serial, "shell", "unzip", "-l", apk_path])
+        .output()
+        .ok()?;
+    if !list_output.status.success() {
+        return None;
+    }
+    let list_str = String::from_utf8_lossy(&list_output.stdout);
+    let best_entry = find_best_icon_entry(&list_str)?;
+
+    let exec_out = hidden_command(adb)
+        .args([
+            "-s",
+            serial,
+            "exec-out",
+            &format!("unzip -p \"{apk_path}\" \"{best_entry}\""),
+        ])
+        .output()
+        .ok()?;
+    if !exec_out.status.success() || exec_out.stdout.is_empty() {
+        return None;
+    }
+
+    let bytes = &exec_out.stdout;
+    let is_png = bytes.starts_with(b"\x89PNG\r\n\x1a\n");
+    let is_webp = bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP";
+
+    if !is_png && !is_webp {
+        return None;
+    }
+
+    let mime = if is_webp { "image/webp" } else { "image/png" };
+    let b64 = base64_encode(bytes);
+    Some(format!("data:{mime};base64,{b64}"))
+}
+
+static ICON_CACHE: LazyLock<Mutex<HashMap<String, String>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn get_package_icon(adb: &Path, serial: &str, package: &str) -> Option<String> {
+    if let Ok(cache) = ICON_CACHE.lock() {
+        if let Some(icon) = cache.get(package) {
+            return if icon.is_empty() {
+                None
+            } else {
+                Some(icon.clone())
+            };
+        }
+    }
+
+    let extracted = extract_package_icon(adb, serial, package);
+    if let Ok(mut cache) = ICON_CACHE.lock() {
+        cache.insert(package.to_string(), extracted.clone().unwrap_or_default());
+    }
+    extracted
+}
+
+fn all_installed_packages(adb: &Path, serial: &str) -> Result<HashSet<String>, String> {
+    let output = hidden_command(adb)
+        .args(["-s", serial, "shell", "pm", "list", "packages"])
+        .output()
+        .map_err(|e| format!("No se pudo consultar las apps del teléfono: {e}"))?;
+    if !output.status.success() {
+        return Err(command_error(&output));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("package:"))
+        .map(str::to_string)
+        .collect())
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct ParsedPhoneProcess {
+    pub(crate) package: String,
+    pub(crate) pid: Option<u32>,
+    pub(crate) memory_bytes: u64,
+    pub(crate) protected: bool,
+    pub(crate) protection_reason: Option<String>,
+}
+
+fn parse_phone_processes(meminfo: &str, all_packages: &HashSet<String>) -> Vec<ParsedPhoneProcess> {
+    let mut procs: HashMap<String, (Option<u32>, u64)> = HashMap::new();
+    let mut in_pss = false;
+    let pss_found = meminfo.contains("Total PSS by process:");
+
+    for line in meminfo.lines() {
+        if pss_found {
+            if line.contains("Total PSS by process:") {
+                in_pss = true;
+                continue;
+            }
+            if in_pss && (line.starts_with("Total ") || line.starts_with(" Applications Memory")) {
+                break;
+            }
+            if !in_pss {
+                continue;
+            }
+        } else {
+            if line.contains("Total RSS by process:") {
+                in_pss = true;
+                continue;
+            }
+            if in_pss && line.starts_with("Total ") {
+                break;
+            }
+            if !in_pss {
+                continue;
+            }
+        }
+
+        let line = line.trim();
+        let Some((mem_part, proc_part)) = line.split_once("K:") else {
+            continue;
+        };
+        let Ok(mem_kb) = mem_part.trim().replace(',', "").parse::<u64>() else {
+            continue;
+        };
+        let proc_part = proc_part.trim();
+
+        let (raw_proc, pid) = if let Some((p, rest)) = proc_part.split_once(" (pid ") {
+            let pid_str = rest
+                .split_whitespace()
+                .next()
+                .unwrap_or_default()
+                .trim_matches(')');
+            (p.trim(), pid_str.parse::<u32>().ok())
+        } else {
+            (proc_part, None)
+        };
+
+        let pkg = raw_proc.split(':').next().unwrap_or(raw_proc).trim();
+        if pkg.is_empty()
+            || !pkg.contains('.')
+            || pkg.starts_with('.')
+            || pkg.starts_with("vendor.")
+            || pkg.starts_with("media.")
+        {
+            continue;
+        }
+        if raw_proc.contains("sandboxed_process") {
+            continue;
+        }
+
+        if !all_packages.is_empty() && !all_packages.contains(pkg) {
+            continue;
+        }
+
+        let entry = procs.entry(pkg.to_string()).or_insert((pid, 0));
+        entry.1 = entry.1.saturating_add(mem_kb.saturating_mul(1024));
+        if entry.0.is_none() && pid.is_some() {
+            entry.0 = pid;
+        }
+    }
+
+    let mut result: Vec<ParsedPhoneProcess> = procs
+        .into_iter()
+        .map(|(package, (pid, mem))| {
+            let protection_reason = protected_package_reason(&package);
+            ParsedPhoneProcess {
+                protected: protection_reason.is_some(),
+                protection_reason,
+                package,
+                pid,
+                memory_bytes: mem,
+            }
+        })
+        .collect();
+    result.sort_by_key(|p| std::cmp::Reverse(p.memory_bytes));
+    result
+}
+
 #[tauri::command]
-pub(crate) async fn list_preset_apps(serial: String, app: AppHandle) -> Result<Vec<PresetAppInfo>, String> {
+pub(crate) async fn list_phone_processes(
+    serial: String,
+    app: AppHandle,
+) -> Result<Vec<PhoneProcessInfo>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let adb = resolve_tool("adb", &app).ok_or("ADB not found")?;
+        let all_packages = all_installed_packages(&adb, &serial).unwrap_or_default();
+        let output = hidden_command(&adb)
+            .args(["-s", &serial, "shell", "dumpsys", "meminfo"])
+            .output()
+            .map_err(|e| format!("No se pudo leer la memoria por aplicación: {e}"))?;
+        if !output.status.success() {
+            return Err(command_error(&output));
+        }
+
+        let parsed = parse_phone_processes(&String::from_utf8_lossy(&output.stdout), &all_packages);
+        let processes = parsed
+            .into_iter()
+            .map(|proc| {
+                let icon = get_package_icon(&adb, &serial, &proc.package);
+                PhoneProcessInfo {
+                    pid: proc.pid,
+                    name: display_name_for_package(&proc.package),
+                    package: proc.package,
+                    memory_bytes: proc.memory_bytes,
+                    protected: proc.protected,
+                    protection_reason: proc.protection_reason,
+                    icon,
+                }
+            })
+            .collect();
+        Ok(processes)
+    })
+    .await
+    .map_err(|e| format!("list_phone_processes failed: {e}"))?
+}
+
+#[tauri::command]
+pub(crate) async fn list_preset_apps(
+    serial: String,
+    app: AppHandle,
+) -> Result<Vec<PresetAppInfo>, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let adb = resolve_tool("adb", &app).ok_or("ADB not found")?;
         let output = hidden_command(&adb)
@@ -172,16 +650,12 @@ pub(crate) async fn list_preset_apps(serial: String, app: AppHandle) -> Result<V
             .output()
             .map_err(|e| e.to_string())?;
         let text = String::from_utf8_lossy(&output.stdout);
-        let ps_output = hidden_command(&adb)
-            .args(["-s", &serial, "shell", "ps -A -o NAME 2>/dev/null || ps -A 2>/dev/null || true"])
-            .output()
-            .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
-            .unwrap_or_default();
+        let running_packages = running_preset_packages(&adb, &serial);
 
         let mut list = Vec::new();
         for (id, name, pkg) in PRESET_BACKGROUND_APPS {
             let installed = text.contains(&format!("package:{pkg}"));
-            let running = installed && ps_output.lines().any(|l| l.contains(pkg));
+            let running = installed && running_packages.iter().any(|running| running == pkg);
             list.push(PresetAppInfo {
                 id: id.to_string(),
                 name: name.to_string(),
@@ -197,32 +671,113 @@ pub(crate) async fn list_preset_apps(serial: String, app: AppHandle) -> Result<V
 }
 
 #[tauri::command]
-pub(crate) async fn boost_phone_memory(serial: String, app: AppHandle) -> Result<DeviceMemoryStats, String> {
+pub(crate) async fn boost_phone_memory(
+    serial: String,
+    packages: Vec<String>,
+    app: AppHandle,
+) -> Result<GameBoostResult, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let adb = resolve_tool("adb", &app).ok_or("ADB not found")?;
-        // 1. Kill background tasks
-        let _ = hidden_command(&adb).args(["-s", &serial, "shell", "am kill-all"]).output();
-        // 2. Trim caches if allowed
-        let _ = hidden_command(&adb).args(["-s", &serial, "shell", "pm trim-caches 999G 2>/dev/null || true"]).output();
-        // 3. Kill heavy non-system preset apps
-        let kill_cmd = "for pkg in com.android.chrome com.google.android.youtube com.facebook.katana com.instagram.android com.zhiliaoapp.musically com.twitter.android com.spotify.music org.mozilla.firefox; do am kill $pkg 2>/dev/null; done";
-        let _ = hidden_command(&adb).args(["-s", &serial, "shell", kill_cmd]).output();
-        thread::sleep(Duration::from_millis(250));
-        device_memory_stats_blocking(&serial, &app)
+        let before = device_memory_stats_blocking(&serial, &app)?;
+        let protected_foreground_package = foreground_preset_package(&adb, &serial);
+        let mut requested = packages
+            .into_iter()
+            .map(|package| package.trim().to_string())
+            .filter(|package| !package.is_empty())
+            .collect::<Vec<_>>();
+        requested.sort();
+        requested.dedup();
+        if requested.is_empty() {
+            return Err("Selecciona al menos una app para optimizar.".into());
+        }
+        let installed = all_installed_packages(&adb, &serial).unwrap_or_default();
+        if let Some(package) = requested
+            .iter()
+            .find(|package| !installed.is_empty() && !installed.contains(*package))
+        {
+            return Err(format!(
+                "La aplicación {package} no está instalada en el dispositivo."
+            ));
+        }
+        if let Some(package) = requested
+            .iter()
+            .find(|package| protected_package_reason(package).is_some())
+        {
+            return Err(format!(
+                "{package} está protegida y no se puede cerrar desde Game Boost."
+            ));
+        }
+        let mut stopped_packages = Vec::new();
+
+        for package in requested {
+            let output = hidden_command(&adb)
+                .args(["-s", &serial, "shell", "am", "force-stop", &package])
+                .output()
+                .map_err(|e| format!("No se pudo cerrar {package}: {e}"))?;
+            if output.status.success() {
+                stopped_packages.push(package);
+            }
+        }
+
+        thread::sleep(Duration::from_millis(350));
+        let after = device_memory_stats_blocking(&serial, &app)?;
+        Ok(GameBoostResult {
+            before,
+            after,
+            stopped_packages,
+            protected_foreground_package,
+        })
     })
     .await
     .map_err(|e| format!("boost_phone_memory failed: {e}"))?
 }
 
 #[tauri::command]
-pub(crate) async fn kill_phone_apps(serial: String, packages: Vec<String>, force: bool, app: AppHandle) -> Result<DeviceMemoryStats, String> {
+pub(crate) async fn kill_phone_apps(
+    serial: String,
+    packages: Vec<String>,
+    force: bool,
+    app: AppHandle,
+) -> Result<DeviceMemoryStats, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let adb = resolve_tool("adb", &app).ok_or("ADB not found")?;
-        for pkg in packages {
-            let trimmed = pkg.trim();
-            if trimmed.is_empty() { continue; }
+        let mut requested = packages
+            .into_iter()
+            .map(|pkg| pkg.trim().to_string())
+            .filter(|pkg| !pkg.is_empty())
+            .collect::<Vec<_>>();
+        requested.sort();
+        requested.dedup();
+        if requested.is_empty() {
+            return Err("Selecciona al menos una aplicación para cerrar.".into());
+        }
+        let installed = all_installed_packages(&adb, &serial).unwrap_or_default();
+        if let Some(package) = requested
+            .iter()
+            .find(|package| !installed.is_empty() && !installed.contains(*package))
+        {
+            return Err(format!(
+                "La aplicación {package} no está instalada en el teléfono."
+            ));
+        }
+        if let Some(package) = requested
+            .iter()
+            .find(|package| protected_package_reason(package).is_some())
+        {
+            return Err(format!("{package} está protegida y no se puede cerrar."));
+        }
+        for package in requested {
             let action = if force { "force-stop" } else { "kill" };
-            let _ = hidden_command(&adb).args(["-s", &serial, "shell", "am", action, trimmed]).output();
+            let output = hidden_command(&adb)
+                .args(["-s", &serial, "shell", "am", action, &package])
+                .output()
+                .map_err(|e| format!("No se pudo cerrar {package}: {e}"))?;
+            if !output.status.success() {
+                return Err(format!(
+                    "No se pudo cerrar {package}: {}",
+                    command_error(&output)
+                ));
+            }
         }
         thread::sleep(Duration::from_millis(200));
         device_memory_stats_blocking(&serial, &app)
@@ -690,5 +1245,49 @@ mod tests {
     fn parse_meminfo_empty_or_zero() {
         assert!(parse_meminfo("").is_none());
         assert!(parse_meminfo("SomeOtherField: 1234 kB\n").is_none());
+    }
+
+    #[test]
+    fn process_parser_aggregates_ram_and_protects_games_and_mappers() {
+        let packages = HashSet::from([
+            "com.discord".to_string(),
+            "com.dts.freefiremax".to_string(),
+            "com.panda.mouse".to_string(),
+        ]);
+        let meminfo = "Total PSS by process:\n  10,000K: com.discord (pid 123)\n  2,000K: com.discord:push (pid 124)\n  8,000K: com.dts.freefiremax (pid 125)\n  1,000K: com.panda.mouse (pid 126)\n";
+        let processes = parse_phone_processes(meminfo, &packages);
+        assert_eq!(processes.len(), 3);
+        let discord = processes
+            .iter()
+            .find(|process| process.package == "com.discord")
+            .unwrap();
+        assert_eq!(discord.memory_bytes, 12_000 * 1024);
+        assert!(!discord.protected);
+        assert!(
+            processes
+                .iter()
+                .find(|process| process.package == "com.dts.freefiremax")
+                .unwrap()
+                .protected
+        );
+        assert!(
+            processes
+                .iter()
+                .find(|process| process.package == "com.panda.mouse")
+                .unwrap()
+                .protected
+        );
+    }
+
+    #[test]
+    fn foreground_parser_only_matches_known_preset_apps() {
+        let chrome =
+            "mCurrentFocus=Window{42 u0 com.android.chrome/com.google.android.apps.chrome.Main}";
+        assert_eq!(
+            foreground_preset_package_from_output(chrome),
+            Some("com.android.chrome".to_string())
+        );
+        let game = "mCurrentFocus=Window{42 u0 com.example.game/.MainActivity}";
+        assert_eq!(foreground_preset_package_from_output(game), None);
     }
 }

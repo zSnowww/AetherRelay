@@ -50,7 +50,7 @@ export function DeviceList({ devices, selectedSerial, onSelect, onRefresh, busy,
         </div>
       )}
 
-      {usable.length === 0 ? (
+      {devices.length === 0 ? (
         <div className="empty">
           <Smartphone size={32} opacity={0.5} />
           <strong>{t('waitingDevice')}</strong>
@@ -58,13 +58,16 @@ export function DeviceList({ devices, selectedSerial, onSelect, onRefresh, busy,
         </div>
       ) : (
         <div className="device-list">
-          {usable.map((device) => {
+          {devices.map((device) => {
+            const isUsable = device.state === 'device';
             const isSelected = selectedSerial === device.serial;
             return (
               <button
                 key={device.serial}
-                className={`device ${isSelected ? 'selected' : ''}`}
-                onClick={() => onSelect(device.serial)}
+                className={`device ${isSelected ? 'selected' : ''} ${!isUsable ? 'unauthorized' : ''}`}
+                onClick={() => isUsable && onSelect(device.serial)}
+                disabled={!isUsable}
+                title={!isUsable ? t('unauthorized') : undefined}
               >
                 <div className="phone-icon">
                   <Smartphone size={20} />
@@ -73,7 +76,7 @@ export function DeviceList({ devices, selectedSerial, onSelect, onRefresh, busy,
                   <strong>{device.model || 'Android Device'}</strong>
                   <small>{device.serial}</small>
                 </div>
-                <em>{device.state === "device" ? t("connected") : device.state === "unauthorized" ? t("unauthorized") : device.state}</em>
+                <em>{isUsable ? t("connected") : device.state === "unauthorized" ? t("unauthorized") : device.state}</em>
               </button>
             );
           })}

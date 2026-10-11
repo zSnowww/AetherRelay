@@ -121,8 +121,26 @@ const zh = {
   ,phoneGameBoost: "游戏极速清理 (Game Boost)"
   ,phoneGameBoostBtn: "释放手机内存"
   ,phoneGameBoostDesc: "关闭 Android 后台闲置任务并清理应用缓存，为游戏释放最大运存并保持满帧运行。"
+  ,phoneGameBoostIdle: "未检测到可安全关闭的已知后台应用。游戏与当前前台应用不会被触碰。"
+  ,phoneGameBoostResult: "已关闭 {count} 个后台应用 · 额外可用 {freed}"
+  ,phoneProcessesTitle: "按内存排列的手机应用"
+  ,phoneProcessesDesc: "选择要关闭的第三方后台应用。游戏与映射工具已锁定保护。"
+  ,phoneProcessAppColumn: "应用"
+  ,phoneProcessMemoryColumn: "内存"
+  ,phoneProcessStatusColumn: "状态"
+  ,phoneProcessActionsColumn: "操作"
+  ,phoneProcessesSelected: "已选择 {count} 个"
+  ,phoneProcessProtected: "受保护"
+  ,phoneProcessSelect: "可关闭"
+  ,phoneProcessesUnavailable: "没有可读取的第三方运行应用；不同 Android 厂商可能限制进程内存数据。"
+  ,phoneProcessesConfirm: "是否关闭这些已选择的后台应用？{apps}"
   ,phoneGameBoostRunning: "正在优化手机内存…"
   ,phoneGameBoostSuccess: "游戏极速清理完成！手机运存已释放。"
+  ,phoneProcessTerminateConfirmTitle: "结束手机应用"
+  ,phoneProcessTerminateConfirm: "确定要强制结束手机上的 {name}（PID {pid}，包名 {package}）吗？"
+  ,phoneProcessSelectAll: "全选可清理"
+  ,phoneProcessDeselectAll: "取消全选"
+  ,phoneProcessClosed: "已结束手机应用：{name}"
   ,presetAppsTitle: "手机常驻重度应用清理"
   ,presetAppsDesc: "检测手机后台驻留的浏览器和社交应用，一键强制结束进程释放 RAM。"
   ,killAllRunningPresets: "一键清理全部在运行应用"
@@ -362,8 +380,26 @@ const en: Record<keyof typeof zh, string> = {
   phoneGameBoost: "Game Boost (Phone Optimizer)",
   phoneGameBoostBtn: "Boost Phone RAM",
   phoneGameBoostDesc: "Terminate idle background tasks and purge caches on the Android device to maximize gaming FPS.",
+  phoneGameBoostIdle: "No known background apps are safe to close. Your game and foreground app are left untouched.",
+  phoneGameBoostResult: "Closed {count} background apps · {freed} newly available",
+  phoneProcessesTitle: "Phone apps by memory use",
+  phoneProcessesDesc: "Choose third-party background apps to close. Your game and keymapper are locked for protection.",
+  phoneProcessAppColumn: "App",
+  phoneProcessMemoryColumn: "Memory",
+  phoneProcessStatusColumn: "Status",
+  phoneProcessActionsColumn: "Actions",
+  phoneProcessesSelected: "{count} selected",
+  phoneProcessProtected: "Protected",
+  phoneProcessSelect: "Selectable",
+  phoneProcessesUnavailable: "No readable third-party running apps. Some Android vendors restrict per-process memory data.",
+  phoneProcessesConfirm: "Close these selected background apps? {apps}",
   phoneGameBoostRunning: "Optimizing phone memory...",
   phoneGameBoostSuccess: "Game Boost complete! Phone memory freed.",
+  phoneProcessTerminateConfirmTitle: "Close phone application",
+  phoneProcessTerminateConfirm: "Are you sure you want to force-stop {name} (PID {pid}, {package}) on the phone?",
+  phoneProcessSelectAll: "Select all optimizable",
+  phoneProcessDeselectAll: "Deselect all",
+  phoneProcessClosed: "App closed on phone: {name}",
   presetAppsTitle: "Heavy Background Phone Apps",
   presetAppsDesc: "Detect and force-stop RAM-heavy background apps (browsers, social media) on your phone.",
   killAllRunningPresets: "Close All Running Apps",
@@ -603,8 +639,26 @@ const es: Record<keyof typeof zh, string> = {
   phoneGameBoost: "Game Boost (Optimizador Celular)",
   phoneGameBoostBtn: "Liberar RAM Celular",
   phoneGameBoostDesc: "Cierra procesos inactivos y purga cachés en segundo plano en Android para evitar caídas de FPS.",
+  phoneGameBoostIdle: "No hay apps conocidas que se puedan cerrar con seguridad. Tu juego y la app en primer plano no se tocan.",
+  phoneGameBoostResult: "Cerradas {count} apps en segundo plano · {freed} liberados",
+  phoneProcessesTitle: "Apps del celular por consumo de RAM",
+  phoneProcessesDesc: "Elige qué apps de terceros cerrar. Tu juego y los mappers están bloqueados por protección.",
+  phoneProcessAppColumn: "App",
+  phoneProcessMemoryColumn: "RAM",
+  phoneProcessStatusColumn: "Estado",
+  phoneProcessActionsColumn: "Acciones",
+  phoneProcessesSelected: "{count} seleccionadas",
+  phoneProcessProtected: "Protegida",
+  phoneProcessSelect: "Seleccionable",
+  phoneProcessesUnavailable: "No hay apps de terceros activas que se puedan leer; algunos fabricantes restringen la RAM por proceso.",
+  phoneProcessesConfirm: "¿Cerrar estas apps en segundo plano seleccionadas? {apps}",
   phoneGameBoostRunning: "Optimizando memoria del celular...",
   phoneGameBoostSuccess: "¡Game Boost completado! Memoria RAM liberada.",
+  phoneProcessTerminateConfirmTitle: "Cerrar app del teléfono",
+  phoneProcessTerminateConfirm: "¿Estás seguro de que deseas forzar el cierre de {name} (PID {pid}, {package}) en el teléfono?",
+  phoneProcessSelectAll: "Seleccionar optimizables",
+  phoneProcessDeselectAll: "Deseleccionar todo",
+  phoneProcessClosed: "App cerrada en el teléfono: {name}",
   presetAppsTitle: "Apps Pesadas en Segundo Plano",
   presetAppsDesc: "Detecta y fuerza el cierre de navegadores y redes sociales que saturan la RAM de tu teléfono.",
   killAllRunningPresets: "Cerrar todas las activas",

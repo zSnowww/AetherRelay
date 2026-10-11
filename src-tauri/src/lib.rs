@@ -32,6 +32,7 @@ pub fn run() {
             adb::check_keymapper_status,
             adb::device_memory,
             adb::list_preset_apps,
+            adb::list_phone_processes,
             adb::boost_phone_memory,
             adb::kill_phone_apps,
             system::system_stats,

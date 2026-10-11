@@ -94,11 +94,17 @@ pub(crate) fn start_mirror(
         arguments.push("--shortcut-mod".to_string());
         arguments.push(shortcut_mod);
     }
-    if let Some(ref codec) = options.video_codec.filter(|c| !c.trim().is_empty() && c != "auto") {
+    if let Some(ref codec) = options
+        .video_codec
+        .filter(|c| !c.trim().is_empty() && c != "auto")
+    {
         arguments.push("--video-codec".to_string());
         arguments.push(codec.clone());
     }
-    if let Some(ref codec) = options.audio_codec.filter(|c| !c.trim().is_empty() && c != "auto") {
+    if let Some(ref codec) = options
+        .audio_codec
+        .filter(|c| !c.trim().is_empty() && c != "auto")
+    {
         arguments.push("--audio-codec".to_string());
         arguments.push(codec.clone());
     }

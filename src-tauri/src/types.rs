@@ -36,6 +36,19 @@ pub(crate) struct PresetAppInfo {
     pub(crate) running: bool,
 }
 
+/// A running, user-installed Android application reported by `dumpsys meminfo`.
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PhoneProcessInfo {
+    pub(crate) pid: Option<u32>,
+    pub(crate) name: String,
+    pub(crate) package: String,
+    pub(crate) memory_bytes: u64,
+    pub(crate) protected: bool,
+    pub(crate) protection_reason: Option<String>,
+    pub(crate) icon: Option<String>,
+}
+
 // ── Mirror types ──────────────────────────────────────────────────────────────
 
 #[derive(Deserialize)]
@@ -172,4 +185,18 @@ pub(crate) struct DeviceMemoryStats {
     pub(crate) used_bytes: u64,
     pub(crate) available_bytes: u64,
     pub(crate) percentage: u32,
+}
+
+/// Outcome of a scoped Android Game Boost run.
+///
+/// The booster only stops known, user-visible background apps.  Returning the
+/// before/after samples makes the effect observable instead of implying that a
+/// cache command always freed memory.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct GameBoostResult {
+    pub(crate) before: DeviceMemoryStats,
+    pub(crate) after: DeviceMemoryStats,
+    pub(crate) stopped_packages: Vec<String>,
+    pub(crate) protected_foreground_package: Option<String>,
 }

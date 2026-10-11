@@ -45,6 +45,21 @@ export type DeviceMemoryStats = {
   availableBytes: number;
   percentage: number;
 };
+export type GameBoostResult = {
+  before: DeviceMemoryStats;
+  after: DeviceMemoryStats;
+  stoppedPackages: string[];
+  protectedForegroundPackage: string | null;
+};
+export type PhoneProcessInfo = {
+  pid?: number | null;
+  name: string;
+  package: string;
+  memoryBytes: number;
+  protected: boolean;
+  protectionReason: string | null;
+  icon?: string | null;
+};
 export type PresetAppInfo = {
   id: string;
   name: string;
@@ -52,4 +67,3 @@ export type PresetAppInfo = {
   installed: boolean;
   running: boolean;
 };
-

@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Real-time Android App Icon Extraction: Extracts high-resolution app launcher icons directly from device APK assets over ADB, streaming PNG/WEBP bytes into Base64 data URLs with an in-memory session cache (`ICON_CACHE`) and fallback gradient initials avatars.
+- Complete Phone Process Management: Expanded process detection using Android's full `Total PSS by process` dumpsys memory metrics, listing all active application packages, primary PIDs, memory usage, and protection statuses on par with the Host PC process list.
+- Individual Phone App Termination: Added individual `X` termination buttons for optimizable Android apps with dedicated glassmorphic confirmation modals and quick batch select/deselect controls for Game Boost.
+- Granular Android Game Boost process list: shows running third-party apps by reported RAM and lets the user choose precisely which apps to close.
+- Game Boost now reports the precise number of managed apps closed and the measured RAM change before and after the operation.
+
+### Changed
+- Transformed the phone processes UI from cramped cards into full-width structured process rows matching the desktop process list aesthetic with app icons, PIDs, memory, and status badges.
+- Enhanced package protection logic to automatically protect games (Free Fire), mappers (Panda Mouse Pro, Shizuku), and core Android system infrastructure (SystemUI, Settings, Telephony, Keyboards, Launchers) from accidental termination.
+- Game Boost now closes only third-party apps explicitly selected by the user, and no longer runs global Android task or cache purges.
+- Free Fire, Free Fire MAX, Shizuku, and supported GG Mouse/Panda mapper packages are protected from Android Game Boost termination.
+
+### Fixed
+- Fixed black screen on application startup under Linux (Wayland / Hyprland) by configuring `WEBKIT_DISABLE_DMABUF_RENDERER=1` in `src-tauri/src/main.rs`.
+- Fixed `Text file busy (os error 26)` build failures during packaging by automatically stopping background ADB server processes in `scripts/package.mjs`.
+- Fixed Next.js static asset export configuration by adding `images: { unoptimized: true }` in `next.config.mjs`.
+- Fixed ADB device auto-discovery: removed the `document.hasFocus()` restriction on device polling, probed immediately on mount, displayed unauthorized devices with status badges, and synchronized device selection automatically in `src/app/page.tsx`.
+- Production builds now use the TypeScript compiler API, avoiding the Next.js CLI `--showConfig` parsing failure that prevented Tauri packages from being created.
+- App termination requests are validated against that allow-list before they reach ADB.
 - Auto-updater client integration using `@tauri-apps/plugin-updater` with GitHub Releases endpoint.
 - "Check for updates" button and real-time status feedback inside the Preferences panel.
 - Integrated settings panel architecture replacing disjointed cards with cohesive rows and compact icon spacing.

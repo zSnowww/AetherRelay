@@ -32,10 +32,13 @@ export function useDevices() {
       }
     }
 
+    // Probe immediately on mount
+    void refreshDevicesSilently();
+
     const handleFocus = () => { void refreshDevicesSilently(); };
     const timer = window.setInterval(() => {
-      if (document.hasFocus()) void refreshDevicesSilently();
-    }, 2000);
+      void refreshDevicesSilently();
+    }, 2500);
     
     window.addEventListener("focus", handleFocus);
     return () => {

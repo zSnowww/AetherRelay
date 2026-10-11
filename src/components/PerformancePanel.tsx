@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Cpu,
-  Flame,
   Info,
   Layers,
   MemoryStick,
@@ -14,10 +13,44 @@ import {
 } from "lucide-react";
 import { desktopApi } from "../api";
 import { ConfirmModal } from "./ConfirmModal";
-import type { DeviceMemoryStats, PresetAppInfo, SystemStats, ToastNotification } from "../types";
+import type { DeviceMemoryStats, GameBoostResult, PhoneProcessInfo, SystemStats, ToastNotification } from "../types";
 import type { MessageKey } from "../i18n";
 
-const formatMemory = (bytes: number) => `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
+const formatMemory = (bytes: number) => {
+  if (bytes >= 1024 * 1024 * 1024) {
+    return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
+  }
+  const mb = Math.round(bytes / 1024 / 1024);
+  return `${mb} MB`;
+};
+
+function getAppInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2 && parts[0] && parts[1]) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+function getAppGradient(pkg: string): string {
+  let hash = 0;
+  for (let i = 0; i < pkg.length; i++) {
+    hash = (hash << 5) - hash + pkg.charCodeAt(i);
+    hash |= 0;
+  }
+  const gradients = [
+    "linear-gradient(135deg, #FF5E62 0%, #FF9966 100%)",
+    "linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)",
+    "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
+    "linear-gradient(135deg, #F368E0 0%, #B53471 100%)",
+    "linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%)",
+    "linear-gradient(135deg, #f12711 0%, #f5af19 100%)",
+    "linear-gradient(135deg, #0575E6 0%, #00F260 100%)",
+    "linear-gradient(135deg, #b20a2c 0%, #ff6b6b 100%)",
+    "linear-gradient(135deg, #654ea3 0%, #eaafc8 100%)",
+  ];
+  return gradients[Math.abs(hash) % gradients.length];
+}
 
 interface PerformancePanelProps {
   t: (key: MessageKey, values?: Record<string, string | number>) => string;
@@ -40,13 +73,15 @@ export function PerformancePanel({
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
-  const [presetApps, setPresetApps] = useState<PresetAppInfo[]>([]);
-  const [presetsLoading, setPresetsLoading] = useState(false);
+  const [phoneProcesses, setPhoneProcesses] = useState<PhoneProcessInfo[]>([]);
+  const [phoneProcessesLoading, setPhoneProcessesLoading] = useState(false);
+  const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
   const [boostingMemory, setBoostingMemory] = useState(false);
+  const [boostResult, setBoostResult] = useState<GameBoostResult | null>(null);
 
   const [processToClose, setProcessToClose] = useState<{ pid: number; name: string } | null>(null);
-  const [appToClose, setAppToClose] = useState<PresetAppInfo | null>(null);
-  const [confirmKillAll, setConfirmKillAll] = useState(false);
+  const [phoneAppToClose, setPhoneAppToClose] = useState<PhoneProcessInfo | null>(null);
+  const [confirmPhoneBoost, setConfirmPhoneBoost] = useState(false);
 
   const refreshPc = useCallback(async () => {
     setPcLoading(true);
@@ -79,19 +114,23 @@ export function PerformancePanel({
     }
   }, []);
 
-  const refreshPresets = useCallback(async (serial?: string) => {
+  const refreshPhoneProcesses = useCallback(async (serial?: string) => {
     if (!serial) {
-      setPresetApps([]);
+      setPhoneProcesses([]);
+      setSelectedPackages(new Set());
       return;
     }
-    setPresetsLoading(true);
+    setPhoneProcessesLoading(true);
     try {
-      const apps = await desktopApi.listPresetApps(serial);
-      setPresetApps(apps);
+      const processes = await desktopApi.listPhoneProcesses(serial);
+      setPhoneProcesses(processes);
+      setSelectedPackages((selected) => new Set(
+        [...selected].filter((packageName) => processes.some((process) => process.package === packageName && !process.protected)),
+      ));
     } catch {
-      setPresetApps([]);
+      setPhoneProcesses([]);
     } finally {
-      setPresetsLoading(false);
+      setPhoneProcessesLoading(false);
     }
   }, []);
 
@@ -99,27 +138,41 @@ export function PerformancePanel({
     await Promise.all([
       refreshPc(),
       refreshPhone(selectedSerial),
-      refreshPresets(selectedSerial),
+      refreshPhoneProcesses(selectedSerial),
     ]);
-  }, [refreshPc, refreshPhone, refreshPresets, selectedSerial]);
+  }, [refreshPc, refreshPhone, refreshPhoneProcesses, selectedSerial]);
 
   useEffect(() => {
     void refreshAll();
   }, [refreshAll]);
 
-  // Phone Game Boost: 1-click RAM cleaner & cache trimmer
+  function togglePhoneProcess(packageName: string) {
+    setSelectedPackages((selected) => {
+      const next = new Set(selected);
+      if (next.has(packageName)) next.delete(packageName);
+      else next.add(packageName);
+      return next;
+    });
+  }
+
   async function handleBoostPhoneMemory() {
-    if (!selectedSerial || boostingMemory) return;
+    if (!selectedSerial || boostingMemory || selectedPackages.size === 0) return;
     setBoostingMemory(true);
     try {
-      const updatedStats = await desktopApi.boostPhoneMemory(selectedSerial);
-      setPhoneStats(updatedStats);
-      await refreshPresets(selectedSerial);
+      const result = await desktopApi.boostPhoneMemory(selectedSerial, [...selectedPackages]);
+      setPhoneStats(result.after);
+      setBoostResult(result);
+      setSelectedPackages(new Set());
+      await refreshPhoneProcesses(selectedSerial);
+      const freedBytes = Math.max(0, result.after.availableBytes - result.before.availableBytes);
       onNotify?.({
         type: "success",
         tag: "BOOST",
         title: t("phoneGameBoostSuccess"),
-        message: `${t("freeMemory", { free: formatMemory(updatedStats.availableBytes) })} (${updatedStats.percentage}% ${t("memoryInUse")})`,
+        message: t("phoneGameBoostResult", {
+          count: result.stoppedPackages.length,
+          freed: formatMemory(freedBytes),
+        }),
       });
     } catch (reason) {
       onNotify?.({
@@ -132,55 +185,6 @@ export function PerformancePanel({
     }
   }
 
-  // Close a single preset app on Android
-  async function confirmKillSingleApp() {
-    if (!selectedSerial || !appToClose) return;
-    const target = appToClose;
-    setAppToClose(null);
-    try {
-      const updatedStats = await desktopApi.killPhoneApps(selectedSerial, [target.package], true);
-      setPhoneStats(updatedStats);
-      await refreshPresets(selectedSerial);
-      onNotify?.({
-        type: "info",
-        tag: "OPTIMIZER",
-        title: t("appClosedNotice", { name: target.name }),
-        message: target.package,
-      });
-    } catch (reason) {
-      onNotify?.({
-        type: "error",
-        tag: "ERROR",
-        message: String(reason),
-      });
-    }
-  }
-
-  // Close all running preset apps in batch
-  async function confirmKillAllRunning() {
-    if (!selectedSerial) return;
-    const runningList = presetApps.filter((a) => a.installed && a.running);
-    if (runningList.length === 0) return;
-    setConfirmKillAll(false);
-    try {
-      const packages = runningList.map((a) => a.package);
-      const updatedStats = await desktopApi.killPhoneApps(selectedSerial, packages, true);
-      setPhoneStats(updatedStats);
-      await refreshPresets(selectedSerial);
-      onNotify?.({
-        type: "success",
-        tag: "OPTIMIZER",
-        title: t("phoneGameBoostSuccess"),
-        message: `${runningList.length} apps terminadas en segundo plano`,
-      });
-    } catch (reason) {
-      onNotify?.({
-        type: "error",
-        tag: "ERROR",
-        message: String(reason),
-      });
-    }
-  }
 
   // Terminate PC process
   async function confirmCloseProcess() {
@@ -207,13 +211,50 @@ export function PerformancePanel({
     }
   }
 
+  const optimizablePhoneProcesses = phoneProcesses.filter((process) => !process.protected);
+  const allOptimizableSelected =
+    optimizablePhoneProcesses.length > 0 &&
+    optimizablePhoneProcesses.every((process) => selectedPackages.has(process.package));
+
+  function toggleSelectAllOptimizable() {
+    if (allOptimizableSelected) {
+      setSelectedPackages(new Set());
+    } else {
+      setSelectedPackages(new Set(optimizablePhoneProcesses.map((p) => p.package)));
+    }
+  }
+
+  async function confirmClosePhoneApp() {
+    if (!phoneAppToClose || !selectedSerial) return;
+    const target = phoneAppToClose;
+    setPhoneAppToClose(null);
+    try {
+      await desktopApi.killPhoneApps(selectedSerial, [target.package], true);
+      await Promise.all([
+        refreshPhone(selectedSerial),
+        refreshPhoneProcesses(selectedSerial),
+      ]);
+      onNotify?.({
+        type: "success",
+        tag: "PROCESS",
+        title: t("phoneProcessTerminateConfirmTitle"),
+        message: t("phoneProcessClosed", { name: target.name }),
+      });
+    } catch (reason) {
+      onNotify?.({
+        type: "error",
+        tag: "ERROR",
+        message: String(reason),
+      });
+    }
+  }
+
   const pcMemoryPercent = pcStats
     ? Math.round((pcStats.usedMemoryBytes / pcStats.totalMemoryBytes) * 100)
     : 0;
 
   const isPhoneHighMem = (phoneStats?.percentage ?? 0) >= 80;
-  const installedPresets = presetApps.filter((a) => a.installed);
-  const runningPresets = installedPresets.filter((a) => a.running);
+  const selectedPhoneProcesses = phoneProcesses.filter((process) => selectedPackages.has(process.package));
 
   return (
     <section className="performance-view">
@@ -226,11 +267,11 @@ export function PerformancePanel({
         <button
           className="secondary"
           onClick={() => void refreshAll()}
-          disabled={pcLoading || phoneLoading || presetsLoading}
+          disabled={pcLoading || phoneLoading || phoneProcessesLoading}
         >
           <RefreshCw
             size={15}
-            className={pcLoading || phoneLoading || presetsLoading ? "spin" : ""}
+            className={pcLoading || phoneLoading || phoneProcessesLoading ? "spin" : ""}
           />
           {t("refreshButton")}
         </button>
@@ -308,13 +349,21 @@ export function PerformancePanel({
                 <div className="boost-action-bar">
                   <div className="boost-action-info">
                     <strong>{t("phoneGameBoost")}</strong>
-                    <p>{t("phoneGameBoostDesc")}</p>
+                    <p>{phoneProcesses.length > 0 ? t("phoneGameBoostDesc") : t("phoneGameBoostIdle")}</p>
+                    {boostResult && (
+                      <span className="boost-result">
+                        {t("phoneGameBoostResult", {
+                          count: boostResult.stoppedPackages.length,
+                          freed: formatMemory(Math.max(0, boostResult.after.availableBytes - boostResult.before.availableBytes)),
+                        })}
+                      </span>
+                    )}
                   </div>
                   <button
                     type="button"
                     className="boost-btn"
-                    disabled={boostingMemory}
-                    onClick={() => void handleBoostPhoneMemory()}
+                    disabled={boostingMemory || selectedPackages.size === 0}
+                    onClick={() => setConfirmPhoneBoost(true)}
                   >
                     <Zap size={13} className={boostingMemory ? "spin" : ""} />
                     {boostingMemory ? t("phoneGameBoostRunning") : t("phoneGameBoostBtn")}
@@ -398,73 +447,135 @@ export function PerformancePanel({
         </div>
       </div>
 
-      {/* Preset Heavy Background Apps on Phone */}
+      {/* Granular Android background app control */}
       {selectedSerial && (
         <div className="preset-apps-panel panel">
           <div className="preset-apps-header">
             <div className="section-title" style={{ margin: 0 }}>
               <div>
                 <Layers size={17} />
-                <h3>{t("presetAppsTitle")}</h3>
+                <h3>{t("phoneProcessesTitle")}</h3>
               </div>
             </div>
             <div className="preset-apps-badges">
-              <span className={`preset-badge ${runningPresets.length > 0 ? "running" : "idle"}`}>
-                <i className={runningPresets.length > 0 ? "dot-running" : "dot-idle"} />
-                {t("appsRunningBadge", { count: runningPresets.length })}
+              <span className={`preset-badge ${phoneProcesses.length > 0 ? "running" : "idle"}`}>
+                <i className={phoneProcesses.length > 0 ? "dot-running" : "dot-idle"} />
+                {t("appsRunningBadge", { count: phoneProcesses.length })}
               </span>
               <span className="preset-badge idle">
-                {t("appsInstalledBadge", { count: installedPresets.length })}
+                {t("phoneProcessesSelected", { count: selectedPackages.size })}
               </span>
-              <button
-                type="button"
-                className="secondary danger-action"
-                style={{ minHeight: "30px", padding: "0 10px", fontSize: "10.5px" }}
-                disabled={runningPresets.length === 0}
-                onClick={() => setConfirmKillAll(true)}
-              >
-                <Flame size={13} />
-                {t("killAllRunningPresets")}
-              </button>
+              {optimizablePhoneProcesses.length > 0 && (
+                <button
+                  type="button"
+                  className="phone-select-all-btn"
+                  onClick={toggleSelectAllOptimizable}
+                >
+                  {allOptimizableSelected ? t("phoneProcessDeselectAll") : t("phoneProcessSelectAll")}
+                </button>
+              )}
             </div>
           </div>
-          <p className="process-note" style={{ margin: "4px 0 10px" }}>
-            {t("presetAppsDesc")}
+          <p className="process-note phone-processes-note">
+            {t("phoneProcessesDesc")}
           </p>
 
-          {installedPresets.length === 0 ? (
+          {phoneProcessesLoading ? (
+            <div className="memory-status-box empty" style={{ marginTop: 12 }}>
+              <RefreshCw size={14} className="spin" />
+              <span>{t("calculating")}</span>
+            </div>
+          ) : phoneProcesses.length === 0 ? (
             <div className="memory-status-box empty" style={{ marginTop: 12 }}>
               <Info size={14} />
-              <span>{t("noPresetAppsDetected")}</span>
+              <span>{t("phoneProcessesUnavailable")}</span>
             </div>
           ) : (
-            <div className="preset-apps-grid">
-              {installedPresets.map((app) => (
+            <div className="phone-process-table">
+              <div className="phone-process-column-headings" aria-hidden="true">
+                <span />
+                <span>{t("phoneProcessAppColumn")}</span>
+                <span>{t("phoneProcessMemoryColumn")}</span>
+                <span>{t("phoneProcessStatusColumn")}</span>
+                <span>{t("phoneProcessActionsColumn")}</span>
+              </div>
+              <div className="process-list phone-process-list">
+              {phoneProcesses.map((app) => (
                 <div
-                  key={app.id}
-                  className={`preset-app-card ${app.running ? "running" : ""}`}
+                  key={app.package}
+                  className={`process-row phone-process-row ${app.protected ? "protected" : ""}`}
                 >
-                  <div className="preset-app-info">
-                    <strong>{app.name}</strong>
-                    <small>{app.package}</small>
+                  <div className="phone-app-icon-wrap">
+                    {app.icon ? (
+                      <img
+                        src={app.icon}
+                        alt={app.name}
+                        className="phone-app-icon"
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="phone-app-avatar"
+                        style={{ background: getAppGradient(app.package) }}
+                      >
+                        {getAppInitials(app.name)}
+                      </div>
+                    )}
                   </div>
-                  <div className="preset-app-actions">
-                    <span className={`preset-badge ${app.running ? "running" : "idle"}`}>
-                      <i className={app.running ? "dot-running" : "dot-idle"} />
-                      {app.running ? "Activa" : "Detenida"}
-                    </span>
+
+                  <div className="process-name phone-process-name">
+                    <div className="phone-process-title-row">
+                      <strong>{app.name}</strong>
+                      {app.pid != null && (
+                        <span className="phone-process-pid">PID {app.pid}</span>
+                      )}
+                    </div>
+                    <small title={app.package} className="phone-process-pkg">
+                      {app.package}
+                    </small>
+                  </div>
+
+                  <span className="phone-process-mem">
+                    {formatMemory(app.memoryBytes)}
+                  </span>
+
+                  <span
+                    className={`preset-badge ${app.protected ? "idle" : "selectable"}`}
+                    title={app.protectionReason ?? undefined}
+                  >
+                    {app.protected ? t("phoneProcessProtected") : t("phoneProcessSelect")}
+                  </span>
+
+                  <div className="phone-process-actions">
+                    <input
+                      type="checkbox"
+                      className="phone-process-select"
+                      checked={selectedPackages.has(app.package)}
+                      disabled={app.protected}
+                      title={app.protected ? app.protectionReason ?? t("phoneProcessProtected") : t("phoneProcessSelect")}
+                      aria-label={app.protected ? app.protectionReason ?? t("phoneProcessProtected") : t("phoneProcessSelect")}
+                      onChange={() => togglePhoneProcess(app.package)}
+                    />
                     <button
                       type="button"
-                      className="app-kill-btn"
-                      disabled={!app.running}
-                      title={app.running ? t("killSelectedApp") : undefined}
-                      onClick={() => setAppToClose(app)}
+                      className="process-close"
+                      disabled={app.protected}
+                      onClick={() => setPhoneAppToClose(app)}
+                      title={
+                        app.protected
+                          ? app.protectionReason ?? t("phoneProcessProtected")
+                          : t("closeProcessTitle", { name: app.name })
+                      }
                     >
-                      <X size={14} />
+                      <X size={15} />
                     </button>
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           )}
         </div>
@@ -519,36 +630,43 @@ export function PerformancePanel({
         onCancel={() => setProcessToClose(null)}
       />
 
-      {/* Confirmation Modal: Force-stop Single Android App */}
+      {/* Confirmation Modal: Terminate Individual Phone App */}
       <ConfirmModal
-        isOpen={Boolean(appToClose)}
-        title={t("killSelectedApp")}
+        isOpen={Boolean(phoneAppToClose)}
+        title={t("phoneProcessTerminateConfirmTitle")}
         description={
-          appToClose
-            ? `¿Deseas forzar el cierre de ${appToClose.name} (${appToClose.package}) en el celular? Se liberará su consumo de memoria RAM.`
+          phoneAppToClose
+            ? t("phoneProcessTerminateConfirm", {
+                name: phoneAppToClose.name,
+                pid: phoneAppToClose.pid ?? "—",
+                package: phoneAppToClose.package,
+              })
             : ""
         }
-        badge={appToClose?.name}
+        badge={phoneAppToClose?.pid ? `PID ${phoneAppToClose.pid}` : phoneAppToClose?.package}
         badgeType="danger"
         confirmText={t("terminateProcess")}
         cancelText={t("cancel")}
         isDanger={true}
-        onConfirm={() => void confirmKillSingleApp()}
-        onCancel={() => setAppToClose(null)}
+        onConfirm={() => void confirmClosePhoneApp()}
+        onCancel={() => setPhoneAppToClose(null)}
       />
 
-      {/* Confirmation Modal: Force-stop All Running Android Preset Apps */}
+      {/* Confirmation Modal: close explicitly selected Android apps */}
       <ConfirmModal
-        isOpen={confirmKillAll}
-        title={t("killAllRunningPresets")}
-        description={`¿Deseas forzar el cierre de todas las apps pesadas activas en segundo plano (${runningPresets.map((a) => a.name).join(", ")}) en tu celular?`}
-        badge={`${runningPresets.length} apps`}
+        isOpen={confirmPhoneBoost}
+        title={t("phoneGameBoost")}
+        description={t("phoneProcessesConfirm", { apps: selectedPhoneProcesses.map((app) => app.name).join(", ") })}
+        badge={t("phoneProcessesSelected", { count: selectedPhoneProcesses.length })}
         badgeType="danger"
-        confirmText={t("killAllRunningPresets")}
+        confirmText={t("phoneGameBoostBtn")}
         cancelText={t("cancel")}
         isDanger={true}
-        onConfirm={() => void confirmKillAllRunning()}
-        onCancel={() => setConfirmKillAll(false)}
+        onConfirm={() => {
+          setConfirmPhoneBoost(false);
+          void handleBoostPhoneMemory();
+        }}
+        onCancel={() => setConfirmPhoneBoost(false)}
       />
     </section>
   );

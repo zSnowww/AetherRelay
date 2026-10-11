@@ -124,6 +124,22 @@ export default function Page() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  // Synchronize active device whenever devices list updates in the background
+  useEffect(() => {
+    const usable = devices.filter((device) => device.state === "device");
+    setShowDeviceHelp(usable.length === 0);
+    setOptions((current) => {
+      if (usable.some((d) => d.serial === current.serial)) {
+        return current;
+      }
+      const nextSerial = usable[0]?.serial ?? "";
+      return nextSerial !== current.serial ? { ...current, serial: nextSerial } : current;
+    });
+    if (usable.length > 0) {
+      setNotice({ key: "devicesFound", values: { count: usable.length } });
+    }
+  }, [devices]);
+
   useEffect(() => {
     localStorage.setItem("panda-locale", locale);
     document.documentElement.lang = locale;
