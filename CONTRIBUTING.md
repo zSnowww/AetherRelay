@@ -21,7 +21,7 @@ sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev 
 ## Development setup
 
 ```bash
-git clone https://github.com/zsnow/AetherRelay.git
+git clone https://github.com/zSnowww/AetherRelay.git
 cd AetherRelay
 npm install
 npm run tauri dev     # starts the Next.js dev server and Tauri in watch mode

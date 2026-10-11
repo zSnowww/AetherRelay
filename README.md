@@ -72,7 +72,7 @@ To prevent joystick stuttering:
 ### Setup & Run
 ```bash
 # Clone the repository
-git clone https://github.com/zsnow/AetherRelay.git
+git clone https://github.com/zSnowww/AetherRelay.git
 cd AetherRelay
 
 # Install dependencies

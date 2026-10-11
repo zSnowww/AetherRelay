@@ -22,4 +22,4 @@ independently on the connected Android device and are subject to their own
 privacy practices.
 
 Questions about this policy may be submitted through the project's
-[GitHub issue tracker](https://github.com/zsnow/AetherRelay/issues).
+[GitHub issue tracker](https://github.com/zSnowww/AetherRelay/issues).
