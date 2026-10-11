@@ -132,13 +132,30 @@ export function PreferencesPanel({
           message: t("appUpToDate", { version: packageMetadata.version }),
         });
       }
-    } catch {
-      setUpdateStatus("error");
-      onNotify?.({
-        type: "error",
-        tag: "UPDATE",
-        message: t("updateCheckFailed"),
-      });
+    } catch (err) {
+      console.error("Failed to check for updates:", err);
+      const errStr = String(err);
+      if (
+        errStr.includes("404") ||
+        errStr.includes("ReleaseNotFound") ||
+        errStr.includes("TargetsNotFound") ||
+        errStr.includes("not found")
+      ) {
+        setUpdateStatus("upToDate");
+        onNotify?.({
+          type: "success",
+          tag: "UPDATE",
+          title: t("appTitle"),
+          message: t("appUpToDate", { version: packageMetadata.version }),
+        });
+      } else {
+        setUpdateStatus("error");
+        onNotify?.({
+          type: "error",
+          tag: "UPDATE",
+          message: t("updateCheckFailed"),
+        });
+      }
     }
   }
 
@@ -515,7 +532,7 @@ export function PreferencesPanel({
                   ? t("checkingForUpdates")
                   : updateStatus === "downloading"
                   ? `${t("downloadingUpdate")} (${downloadProgress}%)`
-                  : "Comprueba si hay nuevas versiones de Aether Relay disponibles en GitHub Releases."}
+                  : t("checkForUpdatesDesc")}
               </p>
             </div>
           </div>

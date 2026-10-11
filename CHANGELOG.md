@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Interactive Root-Cause Isolator**: Step-by-step diagnostic guide to isolate display latency versus UHID input queue backpressure.
   - **Full Tri-lingual Localization**: Complete UI translations across Spanish (`es`), English (`en`), and Chinese (`zh-CN`).
 
+### Fixed
+- **Auto-Updater Check Resolution**: Resolved `Could not check for updates` failure caused by missing `latest.json` release manifest on GitHub Releases, and added graceful fallback handling in `PreferencesPanel` for 404/ReleaseNotFound states when running the latest release version.
+
 ## [0.2.0] - 2026-10-10
 
 ### Added

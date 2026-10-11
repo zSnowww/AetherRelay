@@ -249,6 +249,7 @@ const zh = {
   ,downloadingUpdate: "正在下载更新…"
   ,updateInstalledRestart: "更新已安装完毕，正在重启…"
   ,updateCheckFailed: "检查更新失败，请稍后重试"
+  ,checkForUpdatesDesc: "在 GitHub Releases 上检查是否有可用的新版 Aether Relay。"
   ,tabDiagnostics: "诊断"
   ,diagnosticsEyebrow: "会话遥测与故障排除"
   ,diagnosticsTitle: "会话诊断与延迟排查"
@@ -555,6 +556,7 @@ const en: Record<keyof typeof zh, string> = {
   downloadingUpdate: "Downloading update...",
   updateInstalledRestart: "Update installed successfully. Restarting...",
   updateCheckFailed: "Could not check for updates. Try again later.",
+  checkForUpdatesDesc: "Check if newer versions of Aether Relay are available on GitHub Releases.",
   tabDiagnostics: "Diagnostics",
   diagnosticsEyebrow: "Session Telemetry & Troubleshooting",
   diagnosticsTitle: "Session Diagnostics & Stutter Toolkit",
@@ -861,6 +863,7 @@ const es: Record<keyof typeof zh, string> = {
   downloadingUpdate: "Descargando actualización...",
   updateInstalledRestart: "Actualización instalada con éxito. Reiniciando...",
   updateCheckFailed: "No se pudo comprobar actualizaciones. Inténtalo más tarde.",
+  checkForUpdatesDesc: "Comprueba si hay nuevas versiones de Aether Relay disponibles en GitHub Releases.",
   tabDiagnostics: "Diagnóstico",
   diagnosticsEyebrow: "Telemetría de Sesión y Diagnóstico",
   diagnosticsTitle: "Diagnóstico de Sesión y Tirones",
