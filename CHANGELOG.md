@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-10
+
 ### Added
 - Real-time Android App Icon Extraction: Extracts high-resolution app launcher icons directly from device APK assets over ADB, streaming PNG/WEBP bytes into Base64 data URLs with an in-memory session cache (`ICON_CACHE`) and fallback gradient initials avatars.
 - Complete Phone Process Management: Expanded process detection using Android's full `Total PSS by process` dumpsys memory metrics, listing all active application packages, primary PIDs, memory usage, and protection statuses on par with the Host PC process list.
