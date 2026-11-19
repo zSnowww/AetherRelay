@@ -49,7 +49,7 @@ src-tauri/src/         Rust backend (Tauri commands)
   lib.rs               Entry point — registers all Tauri commands
   tools.rs             adb / scrcpy binary detection
   device.rs            Device listing, SDK version, installed / foreground packages
-  device_watch.rs      Push-based device change events (adb track-devices)
+  device_watch.rs      Push-based device change events (adb server socket)
   keymapper.rs         Supported mapper registry, activation / deactivation
   phone.rs             Phone RAM, heavy-app detection, safe force-stop
   diagnostics.rs       Session telemetry probes, stutter bookmarks

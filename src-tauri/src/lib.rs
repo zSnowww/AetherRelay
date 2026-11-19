@@ -8,7 +8,7 @@
 //! - [`keymapper`]   — supported mapper registry, activation / deactivation
 //! - [`phone`]       — phone RAM, heavy-app detection, safe force-stop
 //! - [`errors`]      — stable error codes returned to the frontend
-//! - [`device_watch`] — push-based device change events (`adb track-devices`)
+//! - [`device_watch`] — push-based device change events (adb server socket)
 //! - [`scrcpy`]      — mirror process lifecycle and FPS telemetry
 //! - [`diagnostics`] — independent telemetry probes, session tracking, bookmarks
 //! - [`system`]      — system stats and safe process termination

@@ -23,7 +23,7 @@ HTML; the backend is a Rust library that exposes Tauri IPC commands.
 │  lib.rs        ← entry point, command registration   │
 │  tools.rs      ← resolve_tool(), tool_info()         │
 │  device.rs     ← list_devices, SDK, packages         │
-│  device_watch  ← adb track-devices → events          │
+│  device_watch  ← adb server socket → events          │
 │  keymapper.rs  ← mapper registry, activate/deactivate│
 │  phone.rs      ← phone RAM, close background apps    │
 │  errors.rs     ← stable error codes                  │
@@ -57,7 +57,7 @@ HTML; the backend is a Rust library that exposes Tauri IPC commands.
 |---|---|
 | `tools.rs` | Resolves `adb` / `scrcpy` binaries across bundled, PATH, and platform-specific locations. |
 | `device.rs` | Device listing (`adb devices -l`), Android SDK version, installed and foreground packages. |
-| `device_watch.rs` | Runs `adb track-devices` and emits a `devices-changed` event on every change, so the UI does not poll. |
+| `device_watch.rs` | Subscribes to `host:track-devices` on the adb server socket and emits a `devices-changed` event on every change, so the UI does not poll. |
 | `keymapper.rs` | Single registry of supported mappers (packages, activation scripts, daemon process markers). Activation via `adb shell monkey` + activation scripts; deactivation via `am force-stop` and shell kill scripts. |
 | `phone.rs` | Phone RAM telemetry (`/proc/meminfo`), per-app memory, heavy background app detection and protected force-stop. |
 | `errors.rs` | Stable error codes (`E_CODE` or `E_CODE: detail`) returned by commands and translated by the frontend in `src/i18n.ts`. |

@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mirror defaults and the Gaming/Baseline presets now live in a single module (`src/config/profiles.ts`). "Reset" now restores the same values as a first launch (12 Mbps instead of 16 Mbps) and keeps the selected device and target app.
 
 - **On-demand Diagnostics Probes**: The adb latency, battery/thermal `dumpsys` and USB probes now run only while the Diagnostics panel is open or a stutter bookmark is collecting, instead of spawning adb shells on the phone every 2–4 seconds during every session. FPS and warning samples are still recorded.
-- **Push-based Device Detection**: Device connect/disconnect now arrives as an event from `adb track-devices` instead of polling `adb devices` every 2.5 seconds (a 15-second fallback poll remains).
+- **Push-based Device Detection**: Device connect/disconnect now arrives as an event from the adb server (`host:track-devices` over its local socket) instead of polling `adb devices` every 2.5 seconds (a 15-second fallback poll remains). No helper process is left behind if the app is killed.
 - `list_devices`, `start_mirror`, `stop_mirror` and `mirror_state` now run off the main thread, so adb calls no longer freeze the window.
 
 - **Backend Module Layout**: `adb.rs` (1,350 lines) is split into `device.rs`, `keymapper.rs` and `phone.rs`. Supported mappers, their packages and daemon process markers now live in one registry instead of three separate lists.
