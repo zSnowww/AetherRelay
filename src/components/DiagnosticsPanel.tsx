@@ -142,6 +142,7 @@ export function DiagnosticsPanel({
       videoBitRateMbps: 8,
       audio: false,
       videoBufferMs: 0,
+      verboseLogs: true,
       turnScreenOff: true,
       stayAwake: true,
     }));
@@ -595,7 +596,7 @@ export function DiagnosticsPanel({
                   key={ms}
                   type="button"
                   className={`pill-btn ${options.videoBufferMs === ms || (!options.videoBufferMs && ms === 0) ? "active" : ""}`}
-                  onClick={() => setOptions((o) => ({ ...o, videoBufferMs: ms }))}
+                  onClick={() => setOptions((o) => ({ ...o, videoBufferMs: ms, verboseLogs: true }))}
                 >
                   {ms} ms {ms === 0 ? "(Zero-delay)" : "(Jitter buffer)"}
                 </button>

@@ -8,24 +8,24 @@ import { pipeline } from "node:stream/promises";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const SCRCPY_VERSION = "4.1";
+const SCRCPY_VERSION = "5.0.1";
 const RELEASE_BASE = `https://github.com/Genymobile/scrcpy/releases/download/v${SCRCPY_VERSION}`;
 const assets = {
   "darwin-arm64": {
     file: `scrcpy-macos-aarch64-v${SCRCPY_VERSION}.tar.gz`,
-    sha256: "20fd47c9014dd5e0fa77091f3cb7adbda8445a360c4584aeaa0150b5b3988ff3"
+    sha256: "33611e51977a8289e2e124b220f727895181ef2eb9060e0987a4dc2db9cf0d6b"
   },
   "darwin-x64": {
     file: `scrcpy-macos-x86_64-v${SCRCPY_VERSION}.tar.gz`,
-    sha256: "ee2a7223bc8dbdc4f482db1134bcf441178dafb833492b71ca4c22090c58ce72"
+    sha256: "31a5467a9e907f162b093267cbbab1276b15c6e709c2ea8159566a8d165beb50"
   },
   "linux-x64": {
     file: `scrcpy-linux-x86_64-v${SCRCPY_VERSION}.tar.gz`,
-    sha256: "ad56ae8bfeedf41e824945c11dbf55fcb092b3e615b9b486f48a50e30d389635"
+    sha256: "9f969d30cc574816077edecda65719c1c70b0aee1df1ba5fa00779ac07b8fd6e"
   },
   "win32-x64": {
     file: `scrcpy-win64-v${SCRCPY_VERSION}.zip`,
-    sha256: "5b12172b3264b2889f4583ee64752ce832e29bc8b1089dca81093459697165db"
+    sha256: "b12a2c4ee8be317422451fc7dcf8ee20a71b5ea7ef9ad73ddd825a25316227a5"
   }
 };
 

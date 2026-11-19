@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Entry-level Gaming Profile**: One-click preset in Preferences for phones with entry-level chips and 4 GB RAM (1600px, 60 FPS, hardware H.264 at 8 Mbps, realtime encoder, phone screen off to limit thermal throttling).
+- **Realtime Encoder Option**: New Preferences toggle that passes `--video-codec-options=priority:int=0,latency:int=0` to scrcpy, asking the device encoder for realtime priority without frame batching.
+- **Computer Decoding Option**: Preferences selector for scrcpy's host decoder (`--hwdec`): hardware (auto, default) or software as a fallback for problematic GPU drivers.
+
+### Changed
+- **scrcpy 5.0.1**: Bundled scrcpy upgraded from 4.1 to 5.0.1, bringing hardware video decoding on the computer (much lower CPU use), improved video buffering, fixed dropped keys with UHID keyboards, and adb 37.0.1.
+- Diagnostics debug verbosity is now an explicit `verboseLogs` option instead of being inferred from the video buffer setting.
+
+### Fixed
+- **Video Buffer Preference**: The "Video Buffer" selector in Preferences toggled Virtual Display mode instead of the buffer; choosing "50 ms" silently started an extra virtual display. It now sets `--video-buffer` as labelled.
+- **Diagnostics Decoder Detection**: Session diagnostics now read scrcpy 5's `Video decoding: <method>` line, so hardware decoding (VA-API, D3D11VA, VideoToolbox) is reported correctly.
 - **Session Diagnostics & Stutter/Delay Testing Toolkit**:
   - **Dual-Pipe Real-Time Telemetry**: Multi-threaded concurrent draining of scrcpy `stdout` and `stderr` into an in-memory 500-line ring buffer (`ScrcpyLogEntry`), eliminating telemetry blindness and pipe deadlocks.
   - **Staggered Probe Coordinator**: Independent low-overhead probes with strict timeouts, background stdout draining (128 KB cap), and child process reaping for ADB command latency (every 2s, 1.5s timeout), battery temperature & 7-level Android `ThermalStatus` (every 4s), and Linux sysfs USB link speed negotiation (`/sys/bus/usb/devices/<port>/speed`) with transport ID reconnect tracking (every 10s).

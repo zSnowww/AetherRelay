@@ -21,6 +21,9 @@ export type MirrorOptions = {
   audioBufferMs?: number;
   videoBufferMs?: number;
   forceWayland?: boolean;
+  lowLatencyEncoder?: boolean;
+  hwdec?: "auto" | "disabled";
+  verboseLogs?: boolean;
 };
 
 export type ProbeStatus = "ok" | "timeout" | "unavailable" | "unsupported";

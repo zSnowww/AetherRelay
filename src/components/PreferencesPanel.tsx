@@ -209,6 +209,10 @@ export function PreferencesPanel({
       videoCodec: "auto",
       audioCodec: "auto",
       audioBufferMs: 100,
+      lowLatencyEncoder: false,
+      videoBufferMs: 0,
+      hwdec: "auto",
+      verboseLogs: false,
     }));
     onThemeChange?.("lime");
     setShowResetConfirm(false);
@@ -217,6 +221,32 @@ export function PreferencesPanel({
       tag: "PREFERENCES",
       title: t("preferencesTitle"),
       message: t("preferencesSavedNotice"),
+    });
+  }
+
+  // Tuned on a Snapdragon 4 Gen 2 / 4 GB phone: near-native 720p capture,
+  // hardware H.264 at a low bitrate, realtime encoder, screen off to limit heat.
+  function applyLowEndGamingProfile() {
+    setOptions((current) => ({
+      ...current,
+      maxSize: 1600,
+      videoBitRateMbps: 8,
+      maxFps: 60,
+      videoCodec: "h264",
+      lowLatencyEncoder: true,
+      videoBufferMs: 0,
+      hwdec: "auto",
+      virtualDisplay: false,
+      turnScreenOff: true,
+      stayAwake: true,
+      audio: true,
+      audioBufferMs: 60,
+    }));
+    onNotify?.({
+      type: "success",
+      tag: "PROFILE",
+      title: t("gamingProfileTitle"),
+      message: t("gamingProfileApplied"),
     });
   }
 
@@ -244,6 +274,52 @@ export function PreferencesPanel({
         <div className="pref-group-header">
           <Video size={16} />
           <h3>{t("settingsCategoryVideo")}</h3>
+        </div>
+
+        {/* Row: Low-end gaming profile */}
+        <div className="pref-row">
+          <div className="pref-row-main">
+            <div className="pref-icon">
+              <Sparkles size={17} />
+            </div>
+            <div className="pref-texts">
+              <div className="pref-title-line">
+                <h4>{t("gamingProfileTitle")}</h4>
+              </div>
+              <p>{t("gamingProfileDesc")}</p>
+            </div>
+          </div>
+          <div className="pref-row-control">
+            <button type="button" className="secondary" onClick={applyLowEndGamingProfile}>
+              {t("applyGamingProfile")}
+            </button>
+          </div>
+        </div>
+
+        {/* Row: Realtime encoder */}
+        <div className="pref-row">
+          <div className="pref-row-main">
+            <div className="pref-icon">
+              <Radio size={17} />
+            </div>
+            <div className="pref-texts">
+              <div className="pref-title-line">
+                <h4>{t("lowLatencyEncoderLabel")}</h4>
+              </div>
+              <p>{t("lowLatencyEncoderDesc")}</p>
+            </div>
+          </div>
+          <div className="pref-row-control">
+            <select
+              value={options.lowLatencyEncoder ? "on" : "off"}
+              onChange={(e) =>
+                setOptions((val) => ({ ...val, lowLatencyEncoder: e.target.value === "on" }))
+              }
+            >
+              <option value="off">{t("encoderDefault")}</option>
+              <option value="on">{t("encoderRealtime")}</option>
+            </select>
+          </div>
         </div>
 
         {/* Row: Video Codec */}
@@ -289,13 +365,42 @@ export function PreferencesPanel({
           </div>
           <div className="pref-row-control">
             <select
-              value={options.virtualDisplay ? "smooth" : "zero"}
+              value={String(options.videoBufferMs ?? 0)}
               onChange={(e) =>
-                setOptions((val) => ({ ...val, virtualDisplay: e.target.value === "smooth" }))
+                setOptions((val) => ({ ...val, videoBufferMs: Number(e.target.value) }))
               }
             >
-              <option value="zero">{t("bufferZero")}</option>
-              <option value="smooth">{t("bufferSmooth")}</option>
+              <option value="0">{t("bufferZero")}</option>
+              <option value="50">{t("bufferSmooth")}</option>
+              {![0, 50].includes(options.videoBufferMs ?? 0) && (
+                <option value={String(options.videoBufferMs)}>{options.videoBufferMs} ms</option>
+              )}
+            </select>
+          </div>
+        </div>
+
+        {/* Row: Host decoder */}
+        <div className="pref-row">
+          <div className="pref-row-main">
+            <div className="pref-icon">
+              <Sliders size={17} />
+            </div>
+            <div className="pref-texts">
+              <div className="pref-title-line">
+                <h4>{t("hwdecLabel")}</h4>
+              </div>
+              <p>{t("hwdecDesc")}</p>
+            </div>
+          </div>
+          <div className="pref-row-control">
+            <select
+              value={options.hwdec ?? "auto"}
+              onChange={(e) =>
+                setOptions((val) => ({ ...val, hwdec: e.target.value as "auto" | "disabled" }))
+              }
+            >
+              <option value="auto">{t("hwdecAuto")}</option>
+              <option value="disabled">{t("hwdecSoftware")}</option>
             </select>
           </div>
         </div>

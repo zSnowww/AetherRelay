@@ -82,6 +82,15 @@ pub(crate) struct MirrorOptions {
     pub(crate) video_buffer_ms: Option<u32>,
     #[serde(default)]
     pub(crate) force_wayland: Option<bool>,
+    /// Ask the device encoder for realtime priority and no frame batching.
+    #[serde(default)]
+    pub(crate) low_latency_encoder: bool,
+    /// Host video decoder: "auto" (hardware when possible) or "disabled" (software).
+    #[serde(default)]
+    pub(crate) hwdec: Option<String>,
+    /// Debug verbosity so diagnostics can capture encoder/decoder names.
+    #[serde(default)]
+    pub(crate) verbose_logs: bool,
 }
 
 #[derive(Serialize)]

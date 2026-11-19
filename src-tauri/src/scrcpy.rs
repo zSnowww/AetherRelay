@@ -132,6 +132,15 @@ pub(crate) fn parse_scrcpy_stream_line(
         }
     }
 
+    // scrcpy 5+: "INFO: Video decoding: vaapi" (or d3d11va, videotoolbox, software)
+    if let Some((_, method)) = line.split_once("Video decoding:") {
+        let method = method.trim();
+        if let Ok(mut p) = tracker.pipeline.lock() {
+            p.decoder = Some(method.to_string());
+            p.hardware_decoding = Some(!method.eq_ignore_ascii_case("software"));
+        }
+    }
+
     // 5. Capture renderer & video display driver
     if line.contains("Renderer:") {
         if let Ok(mut p) = tracker.pipeline.lock() {
@@ -245,8 +254,19 @@ pub(crate) fn start_mirror(
     if let Some(ms) = options.audio_buffer_ms.filter(|&ms| ms > 0) {
         arguments.push(format!("--audio-buffer={ms}"));
     }
-    if let Some(ms) = options.video_buffer_ms {
+    if options.low_latency_encoder {
+        // MediaCodec KEY_PRIORITY=0 (realtime) and KEY_LATENCY=0; encoders that
+        // don't support a key ignore it.
+        arguments.push("--video-codec-options=priority:int=0,latency:int=0".to_string());
+    }
+    if let Some(ms) = options.video_buffer_ms.filter(|&ms| ms > 0) {
         arguments.push(format!("--video-buffer={ms}"));
+    }
+    if let Some(ref hwdec) = options
+        .hwdec
+        .filter(|v| !v.trim().is_empty() && v != "auto")
+    {
+        arguments.push(format!("--hwdec={hwdec}"));
     }
     if options.virtual_display {
         let height = options.max_size.saturating_mul(9) / 16;
@@ -276,7 +296,7 @@ pub(crate) fn start_mirror(
         arguments.push("--always-on-top".to_string());
     }
     // In diagnostic mode, ask scrcpy for debug verbosity to capture the hardware encoder name
-    if options.video_buffer_ms.is_some() || options.force_wayland.is_some() {
+    if options.verbose_logs || options.force_wayland.is_some() {
         arguments.push("--verbosity=debug".to_string());
     }
 
@@ -570,5 +590,18 @@ mod tests {
         );
         assert_eq!(telemetry.lock().unwrap().observed_dropped_frames, Some(1));
         assert_eq!(telemetry.lock().unwrap().warning_count, 1);
+    }
+
+    #[test]
+    fn parse_scrcpy5_hardware_decoding_line() {
+        let telemetry = Arc::new(Mutex::new(TelemetryInner::default()));
+        let tracker = Arc::new(SessionTracker::new("S".into(), telemetry.clone()));
+        parse_scrcpy_stream_line("INFO: Video decoding: vaapi", 0, &tracker, &telemetry);
+        let p = tracker.pipeline.lock().unwrap();
+        assert_eq!(p.decoder.as_deref(), Some("vaapi"));
+        assert_eq!(p.hardware_decoding, Some(true));
+        drop(p);
+        parse_scrcpy_stream_line("50 fps (+1 frames skipped)", 0, &tracker, &telemetry);
+        assert_eq!(telemetry.lock().unwrap().fps, Some(50));
     }
 }

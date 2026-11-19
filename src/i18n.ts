@@ -288,6 +288,18 @@ const zh = {
   ,baselinePresetDesc: "设为 1920px max、60 FPS、H.264、8 Mbps、关闭音频、0 ms 缓冲，用于排查性能变量。"
   ,applyBaselineButton: "应用基线测试预设"
   ,baselineApplied: "已应用 8 Mbps H.264 基线预设"
+  ,gamingProfileTitle: "游戏配置 (入门机型)"
+  ,gamingProfileDesc: "适用于 4 GB RAM 的入门处理器: 1600px、60 FPS、H.264 8 Mbps、实时编码器、关闭手机屏幕以降低发热。"
+  ,applyGamingProfile: "应用配置"
+  ,gamingProfileApplied: "已应用入门机型游戏配置"
+  ,lowLatencyEncoderLabel: "实时编码器"
+  ,lowLatencyEncoderDesc: "请求手机编码器使用实时优先级且不缓存帧。不支持的编码器会忽略此设置。"
+  ,encoderDefault: "默认"
+  ,encoderRealtime: "实时 (低延迟)"
+  ,hwdecLabel: "电脑端解码"
+  ,hwdecDesc: "硬件解码大幅降低电脑 CPU 占用。如果画面异常或黑屏，请切换为软件解码。"
+  ,hwdecAuto: "硬件 (自动)"
+  ,hwdecSoftware: "软件"
   ,forceWaylandOption: "强制原生 Wayland (SDL_VIDEODRIVER=wayland)"
   ,forceWaylandDesc: "在 Linux / Hyprland 环境下绕过 XWayland，测试能否消除帧同步微卡顿。"
   ,videoBufferOption: "视频抖动缓冲区 (Video Jitter Buffer)"
@@ -597,6 +609,18 @@ const en: Record<keyof typeof zh, string> = {
   baselinePresetDesc: "Applies 1920px max, 60 FPS, H.264, 8 Mbps, Audio OFF, Buffer 0ms to isolate streaming variables.",
   applyBaselineButton: "Apply Baseline Preset",
   baselineApplied: "8 Mbps H.264 Baseline preset applied",
+  gamingProfileTitle: "Gaming Profile (Entry-level Phone)",
+  gamingProfileDesc: "For entry-level chips with 4 GB RAM: 1600px, 60 FPS, H.264 at 8 Mbps, realtime encoder, phone screen off to reduce heat.",
+  applyGamingProfile: "Apply Profile",
+  gamingProfileApplied: "Entry-level gaming profile applied",
+  lowLatencyEncoderLabel: "Realtime Encoder",
+  lowLatencyEncoderDesc: "Asks the phone's encoder for realtime priority and no frame batching. Encoders that don't support it ignore the setting.",
+  encoderDefault: "Default",
+  encoderRealtime: "Realtime (low latency)",
+  hwdecLabel: "Computer Decoding",
+  hwdecDesc: "Hardware decoding greatly reduces CPU use on your computer. Switch to software if the image glitches or stays black.",
+  hwdecAuto: "Hardware (auto)",
+  hwdecSoftware: "Software",
   forceWaylandOption: "Force Native Wayland (SDL_VIDEODRIVER=wayland)",
   forceWaylandDesc: "Bypasses XWayland on Linux / Hyprland to test if vsync pacing improves.",
   videoBufferOption: "Video Jitter Buffer",
@@ -906,6 +930,18 @@ const es: Record<keyof typeof zh, string> = {
   baselinePresetDesc: "Aplica 1920px max, 60 FPS, H.264, 8 Mbps, Audio OFF y Buffer 0ms para aislar variables.",
   applyBaselineButton: "Aplicar Preset de Control",
   baselineApplied: "Preset de control 8 Mbps H.264 aplicado",
+  gamingProfileTitle: "Perfil Juego (Gama de Entrada)",
+  gamingProfileDesc: "Para chips de entrada con 4 GB de RAM: 1600px, 60 FPS, H.264 a 8 Mbps, codificador en tiempo real y pantalla del teléfono apagada para reducir el calor.",
+  applyGamingProfile: "Aplicar Perfil",
+  gamingProfileApplied: "Perfil de juego para gama de entrada aplicado",
+  lowLatencyEncoderLabel: "Codificador en Tiempo Real",
+  lowLatencyEncoderDesc: "Pide al codificador del teléfono prioridad de tiempo real y que no acumule frames. Los codificadores que no lo soportan lo ignoran.",
+  encoderDefault: "Por defecto",
+  encoderRealtime: "Tiempo real (baja latencia)",
+  hwdecLabel: "Decodificación en el PC",
+  hwdecDesc: "La decodificación por hardware reduce mucho el uso de CPU del PC. Cambia a software si la imagen falla o se queda en negro.",
+  hwdecAuto: "Hardware (automático)",
+  hwdecSoftware: "Software",
   forceWaylandOption: "Forzar Wayland Nativo (SDL_VIDEODRIVER=wayland)",
   forceWaylandDesc: "Bypasa XWayland en Linux / Hyprland para comprobar si elimina micro-tirones de pacing.",
   videoBufferOption: "Buffer de Jitter de Video",
