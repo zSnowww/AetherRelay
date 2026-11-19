@@ -37,7 +37,9 @@ npm run tauri dev     # starts the Next.js dev server and Tauri in watch mode
 src/                   Next.js frontend (React + TypeScript)
   app/page.tsx         Main view — routing between mirror / performance / preferences
   components/          UI components, each receiving a t() prop for i18n
-  hooks/               useDevices, useMirror
+  config/              Defaults, presets (profiles.ts) and theme palettes
+  hooks/               useOptions, useActivation, useDevices, useMirror, useLocale, useTheme, useToasts
+  components/ui/       Shared building blocks (PrefRow)
   i18n.ts              All user-visible strings in en / es / zh-CN
 
 src-tauri/src/         Rust backend (Tauri commands)

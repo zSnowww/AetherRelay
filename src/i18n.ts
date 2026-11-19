@@ -985,8 +985,15 @@ const es: Record<keyof typeof zh, string> = {
 export type MessageKey = keyof typeof zh;
 const dictionaries = { "zh-CN": zh, en, es };
 
+export const LOCALE_STORAGE_KEY = "aether-locale";
+const LEGACY_LOCALE_KEY = "panda-locale";
+
 export function detectLocale(): Locale {
-  const saved = localStorage.getItem("panda-locale");
+  let saved: string | null = null;
+  try {
+    saved = localStorage.getItem(LOCALE_STORAGE_KEY) ?? localStorage.getItem(LEGACY_LOCALE_KEY);
+    localStorage.removeItem(LEGACY_LOCALE_KEY);
+  } catch { /* storage unavailable */ }
   if (saved === "zh-CN" || saved === "en" || saved === "es") return saved;
   const nav = navigator.language.toLowerCase();
   if (nav.startsWith("es")) return "es";

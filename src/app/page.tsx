@@ -2,185 +2,94 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CircleStop, Globe, MonitorPlay, Zap, ZapOff, Activity, SlidersHorizontal, Gauge } from "lucide-react";
-import { desktopApi, onStutterMarked } from "../api";
-import { detectLocale, localizeBackendError, translate, type Locale, type MessageKey } from "../i18n";
+import { desktopApi } from "../api";
+import { describeBackendError } from "../i18n";
 import packageMetadata from "../../package.json";
+import { useActivation, type Notice } from "../hooks/useActivation";
 import { useDevices } from "../hooks/useDevices";
+import { useLocale } from "../hooks/useLocale";
 import { useMirror } from "../hooks/useMirror";
-import { DEFAULT_OPTIONS } from "../config/profiles";
+import { useOptions } from "../hooks/useOptions";
+import { useStutterShortcuts } from "../hooks/useStutterShortcuts";
+import { useTheme } from "../hooks/useTheme";
+import { useToasts } from "../hooks/useToasts";
 
 import { DeviceList } from "../components/DeviceList";
 import { SettingsPanel } from "../components/SettingsPanel";
 import { ShortcutsPanel } from "../components/ShortcutsPanel";
 import { PerformancePanel } from "../components/PerformancePanel";
-import { PreferencesPanel, THEME_PALETTES } from "../components/PreferencesPanel";
+import { PreferencesPanel } from "../components/PreferencesPanel";
 import { DiagnosticsPanel } from "../components/DiagnosticsPanel";
 import { FpsHud } from "../components/FpsHud";
 import { ActivationModal } from "../components/ActivationModal";
 import { ToastContainer } from "../components/ToastContainer";
 import { AetherLogo } from "../components/AetherLogo";
-import type { ActivationLog, EnvironmentStatus, MirrorOptions, ToastNotification } from "../types";
+import type { EnvironmentStatus } from "../types";
 
-type Notice = { key: MessageKey; values?: Record<string, string | number> } | { raw: string };
-
+type View = "mirror" | "performance" | "preferences" | "diagnostics";
 
 export default function Page() {
-  const [locale, setLocale] = useState<Locale>("en"); // Fallback initial
-  const [environment, setEnvironment] = useState<EnvironmentStatus | null>(null);
-  const [options, setOptions] = useState<MirrorOptions>(DEFAULT_OPTIONS);
-  const [busy, setBusy] = useState(false);
-  const [showDeviceHelp, setShowDeviceHelp] = useState(false);
-  const [activeView, setActiveView] = useState<"mirror" | "performance" | "preferences" | "diagnostics">("mirror");
-  const [notice, setNotice] = useState<Notice>({ key: "checkingEnvironment" });
-  
-  // Activation state & tracking
-  const [activatedDevices, setActivatedDevices] = useState<Record<string, boolean>>({});
-  const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
-  const [activationStatus, setActivationStatus] = useState<"idle" | "running" | "success" | "failed">("idle");
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [activationLogs, setActivationLogs] = useState<ActivationLog[]>([]);
-  const [activationError, setActivationError] = useState<string | undefined>(undefined);
-  const [activationTargetName, setActivationTargetName] = useState<string>("");
-
-  // Toast notifications & theme
-  const [toasts, setToasts] = useState<ToastNotification[]>([]);
-  const [themeColor, setThemeColor] = useState<string>("lime");
-
-  const addToast = useCallback((toast: Omit<ToastNotification, "id">) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev.slice(-3), { ...toast, id }]);
-  }, []);
-
-  const dismissToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
-
-  const applyTheme = useCallback((themeId: string) => {
-    setThemeColor(themeId);
-    try {
-      localStorage.setItem("aether-theme-color", themeId);
-      const palette = THEME_PALETTES.find((p) => p.id === themeId) ?? THEME_PALETTES[0];
-      document.documentElement.style.setProperty("--lime", palette.hex);
-      document.documentElement.style.setProperty("--lime-soft", palette.soft);
-      document.documentElement.style.setProperty("--bg", palette.bg);
-      document.documentElement.style.setProperty("--surface", palette.surface);
-      document.documentElement.style.setProperty("--border", palette.border);
-      document.documentElement.style.setProperty("--border-strong", palette.borderStrong);
-      document.documentElement.style.setProperty("--radial-1", palette.radial1);
-      document.documentElement.style.setProperty("--radial-2", palette.radial2);
-    } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => {
-    try {
-      const savedTheme = localStorage.getItem("aether-theme-color") || "lime";
-      applyTheme(savedTheme);
-    } catch { /* ignore */ }
-  }, [applyTheme]);
-
+  const { locale, setLocale, t } = useLocale();
+  const { themeColor, applyTheme } = useTheme();
+  const { toasts, addToast, dismissToast } = useToasts();
+  const [options, setOptions] = useOptions();
   const { devices, refreshDevices } = useDevices();
   const { mirror, setMirror, hasExitedUnexpectedly, setHasExitedUnexpectedly } = useMirror();
-  
-  useEffect(() => { setLocale(detectLocale()); }, []);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("aether-relay-options");
-    if (!saved) return;
-    try { setOptions(current => ({ ...current, ...JSON.parse(saved) })); } catch { /* Ignore malformed saved preferences. */ }
-  }, []);
+  const [environment, setEnvironment] = useState<EnvironmentStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [showDeviceHelp, setShowDeviceHelp] = useState(false);
+  const [activeView, setActiveView] = useState<View>("mirror");
+  const [notice, setNotice] = useState<Notice>({ key: "checkingEnvironment" });
 
-  useEffect(() => { localStorage.setItem("aether-relay-options", JSON.stringify(options)); }, [options]);
+  const activation = useActivation({
+    serial: options.serial,
+    targetApp: options.targetApp,
+    t,
+    addToast,
+    setNotice,
+    setBusy,
+  });
+  const { refreshStatus } = activation;
 
-  const t = useCallback((key: MessageKey, values?: Record<string, string | number>) => translate(locale, key, values), [locale]);
-
-  // Global listener for stutter marking events (IPC socket, CLI, or UI)
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    void onStutterMarked(() => {
-      addToast({
-        type: "warning",
-        tag: "STUTTER",
-        title: t("markStutterButton"),
-        message: t("stutterMarkedNotice"),
-      });
-    }).then((fn) => {
-      unlisten = fn;
-    });
-    return () => {
-      unlisten?.();
-    };
-  }, [addToast, t]);
-
-  // Global hotkey: Ctrl+Shift+S or Mod+Shift+S while anywhere in Aether Relay
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === "KeyS") {
-        e.preventDefault();
-        void desktopApi.markStutter();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  useStutterShortcuts(addToast, t);
 
   const refresh = useCallback(async () => {
     setBusy(true);
     try {
-      const env = await desktopApi.environment();
-      setEnvironment(env);
+      setEnvironment(await desktopApi.environment());
       const found = await refreshDevices();
-      const state = await desktopApi.state();
-      setMirror(state);
-      
+      setMirror(await desktopApi.state());
+
       const usable = found.filter((device) => device.state === "device");
       setShowDeviceHelp(usable.length === 0);
       const activeSerial = usable.some((d) => d.serial === options.serial) ? options.serial : usable[0]?.serial ?? "";
       setOptions((current) => ({ ...current, serial: activeSerial }));
       setNotice(usable.length ? { key: "devicesFound", values: { count: usable.length } } : { key: "noDevices" });
-
-      if (activeSerial) {
-        try {
-          const isActive = await desktopApi.checkKeymapperStatus(activeSerial);
-          setActivatedDevices((prev) => ({ ...prev, [activeSerial]: isActive }));
-        } catch { /* ignore status check failure */ }
-      }
-    } catch (error) { setNotice({ raw: localizeBackendError(locale, error) }); } finally { setBusy(false); }
-  }, [locale, refreshDevices, setMirror, options.serial]);
+      await refreshStatus(activeSerial);
+    } catch (error) {
+      setNotice({ raw: describeBackendError(t, error) });
+    } finally {
+      setBusy(false);
+    }
+  }, [t, refreshDevices, setMirror, options.serial, setOptions, refreshStatus]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  // Synchronize active device whenever devices list updates in the background
+  // Keep a usable device selected whenever the device list changes.
   useEffect(() => {
     const usable = devices.filter((device) => device.state === "device");
     setShowDeviceHelp(usable.length === 0);
     setOptions((current) => {
-      if (usable.some((d) => d.serial === current.serial)) {
-        return current;
-      }
+      if (usable.some((d) => d.serial === current.serial)) return current;
       const nextSerial = usable[0]?.serial ?? "";
       return nextSerial !== current.serial ? { ...current, serial: nextSerial } : current;
     });
     if (usable.length > 0) {
       setNotice({ key: "devicesFound", values: { count: usable.length } });
     }
-  }, [devices]);
+  }, [devices, setOptions]);
 
-  useEffect(() => {
-    localStorage.setItem("panda-locale", locale);
-    document.documentElement.lang = locale;
-  }, [locale]);
-
-  // Sync activation status whenever serial changes
-  useEffect(() => {
-    if (!options.serial) return;
-    void (async () => {
-      try {
-        const active = await desktopApi.checkKeymapperStatus(options.serial);
-        setActivatedDevices((prev) => ({ ...prev, [options.serial]: active }));
-      } catch { /* ignore */ }
-    })();
-  }, [options.serial]);
-  
   useEffect(() => {
     if (hasExitedUnexpectedly) {
       setNotice({ key: "mirrorWindowExited" });
@@ -191,7 +100,7 @@ export default function Page() {
   const selected = useMemo(() => devices.find((device) => device.serial === options.serial), [devices, options.serial]);
   const ready = Boolean(environment?.adb.available && environment?.scrcpy.available && selected?.state === "device");
   const canActivateApps = Boolean(environment?.adb.available && selected?.state === "device");
-  const isActivated = Boolean(options.serial && activatedDevices[options.serial]);
+  const isActivated = activation.isActivated;
   const canStartMirror = ready && isActivated;
 
   async function toggleMirror() {
@@ -208,133 +117,7 @@ export default function Page() {
         message: isStart ? t("mirrorStarted", { pid: state.pid ?? "—" }) : t("mirrorStopped"),
       });
     } catch (error) {
-      const err = localizeBackendError(locale, error);
-      setNotice({ raw: err });
-      addToast({ type: "error", tag: "ERROR", message: err });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function activateApps() {
-    if (!options.serial) return;
-    setBusy(true);
-    setIsActivationModalOpen(true);
-    setActivationStatus("running");
-    setCurrentStepIndex(0);
-    setActivationError(undefined);
-    setActivationLogs([
-      {
-        timestamp: new Date().toLocaleTimeString(),
-        message: `[ADB] Verificando conexión con dispositivo ${options.serial}...`,
-        isError: false,
-      },
-    ]);
-    setNotice({ key: "activatingApps" });
-
-    // Step progression timers while backend executes
-    const timer1 = setTimeout(() => {
-      setCurrentStepIndex(1);
-      setActivationLogs((prev) => [
-        ...prev,
-        {
-          timestamp: new Date().toLocaleTimeString(),
-          message: `[TARGET] Buscando mapeador objetivo (${options.targetApp ?? "auto"})...`,
-          isError: false,
-        },
-      ]);
-    }, 700);
-
-    const timer2 = setTimeout(() => {
-      setCurrentStepIndex(2);
-      setActivationLogs((prev) => [
-        ...prev,
-        {
-          timestamp: new Date().toLocaleTimeString(),
-          message: `[APP] Lanzando app de mapeo en el dispositivo Android...`,
-          isError: false,
-        },
-      ]);
-    }, 1700);
-
-    const timer3 = setTimeout(() => {
-      setCurrentStepIndex(3);
-      setActivationLogs((prev) => [
-        ...prev,
-        {
-          timestamp: new Date().toLocaleTimeString(),
-          message: `[DAEMON] Inyectando script del servidor daemon sin root...`,
-          isError: false,
-        },
-      ]);
-    }, 3400);
-
-    try {
-      const res = await desktopApi.activateApps(options.serial, options.targetApp);
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-
-      setCurrentStepIndex(4);
-      setActivationStatus("success");
-      setActivationTargetName(res.appName);
-      setActivationLogs(res.logs && res.logs.length > 0 ? res.logs : [
-        {
-          timestamp: new Date().toLocaleTimeString(),
-          message: `[SUCCESS] ¡Mapeador ${res.appName} activado con éxito!`,
-          isError: false,
-        },
-      ]);
-      setActivatedDevices((prev) => ({ ...prev, [options.serial]: true }));
-      setNotice({ key: "activationCommandCompleted", values: { app: res.appName } });
-      addToast({
-        type: "success",
-        tag: "KEYMAPPER",
-        title: res.appName,
-        message: t("activationStatusSuccess"),
-      });
-    } catch (error) {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-
-      const errStr = localizeBackendError(locale, error);
-      setActivationError(errStr);
-      setActivationStatus("failed");
-      setActivationLogs((prev) => [
-        ...prev,
-        {
-          timestamp: new Date().toLocaleTimeString(),
-          message: `[ERROR] ${errStr}`,
-          isError: true,
-        },
-      ]);
-      setNotice({ raw: errStr });
-      addToast({
-        type: "error",
-        tag: "KEYMAPPER",
-        message: errStr,
-      });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function deactivateApps() {
-    if (!options.serial) return;
-    setBusy(true);
-    setNotice({ key: "deactivatingApps" });
-    try {
-      await desktopApi.deactivateApps(options.serial);
-      setActivatedDevices((prev) => ({ ...prev, [options.serial]: false }));
-      setNotice({ key: "deactivationCompleted" });
-      addToast({
-        type: "info",
-        tag: "KEYMAPPER",
-        message: t("deactivationCompleted"),
-      });
-    } catch (error) {
-      const err = localizeBackendError(locale, error);
+      const err = describeBackendError(t, error);
       setNotice({ raw: err });
       addToast({ type: "error", tag: "ERROR", message: err });
     } finally {
@@ -405,7 +188,7 @@ export default function Page() {
           <SettingsPanel 
             options={options} 
             setOptions={setOptions} 
-            onOpenTransparency={() => setIsActivationModalOpen(true)}
+            onOpenTransparency={activation.modal.open}
             t={t} 
           />
         </section>
@@ -423,7 +206,7 @@ export default function Page() {
           <button
             type="button"
             className={`keymapper-status-pill ${isActivated ? "active" : ""}`}
-            onClick={() => setIsActivationModalOpen(true)}
+            onClick={activation.modal.open}
             title={t("viewActivationLogs")}
           >
             <i />
@@ -434,7 +217,7 @@ export default function Page() {
           {isActivated && (
             <button 
               className="secondary danger-action" 
-              onClick={() => void deactivateApps()} 
+              onClick={() => void activation.deactivate()} 
               disabled={busy || !canActivateApps} 
               title={t("deactivateApps")}
             >
@@ -442,7 +225,7 @@ export default function Page() {
             </button>
           )}
 
-          <button className="secondary" onClick={() => void activateApps()} disabled={busy || !canActivateApps}>
+          <button className="secondary" onClick={() => void activation.activate()} disabled={busy || !canActivateApps}>
             <Zap size={16}/>{t("activateApps")}
           </button>
 
@@ -493,15 +276,15 @@ export default function Page() {
 
       {/* Activation Preview and Transparency Modal */}
       <ActivationModal
-        isOpen={isActivationModalOpen}
-        onClose={() => setIsActivationModalOpen(false)}
-        appName={activationTargetName || (options.targetApp === "auto" ? "Keymapper" : options.targetApp || "Keymapper")}
+        isOpen={activation.modal.isOpen}
+        onClose={activation.modal.close}
+        appName={activation.modal.targetName || (options.targetApp === "auto" ? "Keymapper" : options.targetApp || "Keymapper")}
         serial={options.serial}
-        status={activationStatus}
-        currentStepIndex={currentStepIndex}
-        logs={activationLogs}
-        errorDetail={activationError}
-        onRetry={() => void activateApps()}
+        status={activation.modal.status}
+        currentStepIndex={activation.modal.stepIndex}
+        logs={activation.modal.logs}
+        errorDetail={activation.modal.error}
+        onRetry={() => void activation.activate()}
         onStartMirror={canStartMirror ? () => void toggleMirror() : undefined}
         t={t}
       />

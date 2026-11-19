@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Backend Module Layout**: `adb.rs` (1,350 lines) is split into `device.rs`, `keymapper.rs` and `phone.rs`. Supported mappers, their packages and daemon process markers now live in one registry instead of three separate lists.
 - **Error Codes**: Backend commands return stable codes (`E_ADB_MISSING`, `E_MIRROR_START: <detail>`, …) instead of Chinese/Spanish/English sentences, and the frontend translates by code. Errors in the Performance and Diagnostics panels are now localized too.
+- **Frontend Structure**: `page.tsx` drops from 519 to ~300 lines; activation, options persistence, locale, theme, toasts and stutter shortcuts move into dedicated hooks. Settings rows in Preferences use a shared `PrefRow` component, and theme palettes move to `src/config/themes.ts`.
+- The saved language now uses the `aether-locale` storage key; the old `panda-locale` value is migrated automatically.
 
 ### Fixed
 - **False "Keymapper Active" on Honor Phones**: Mapper detection matched any process containing `gameassistant`, including Honor's system Game Assistant, which starts with games. Detection and the deactivation kill script now only match mapper-specific names.
