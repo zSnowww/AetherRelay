@@ -16,7 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **scrcpy 5.0.1**: Bundled scrcpy upgraded from 4.1 to 5.0.1, bringing hardware video decoding on the computer (much lower CPU use), improved video buffering, fixed dropped keys with UHID keyboards, and adb 37.0.1.
 - Diagnostics debug verbosity is now an explicit `verboseLogs` option instead of being inferred from the video buffer setting.
 
+- Mirror defaults and the Gaming/Baseline presets now live in a single module (`src/config/profiles.ts`). "Reset" now restores the same values as a first launch (12 Mbps instead of 16 Mbps) and keeps the selected device and target app.
+
 ### Fixed
+- **Console Windows During Play (Windows)**: Diagnostics probes launched `adb` without the hidden-console flag, which could flash a console window every 2 seconds and steal focus from the mirror.
 - **Video Buffer Preference**: The "Video Buffer" selector in Preferences toggled Virtual Display mode instead of the buffer; choosing "50 ms" silently started an extra virtual display. It now sets `--video-buffer` as labelled.
 - **Diagnostics Decoder Detection**: Session diagnostics now read scrcpy 5's `Video decoding: <method>` line, so hardware decoding (VA-API, D3D11VA, VideoToolbox) is reported correctly.
 - **Session Diagnostics & Stutter/Delay Testing Toolkit**:

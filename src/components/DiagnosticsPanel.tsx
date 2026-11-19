@@ -23,6 +23,7 @@ import {
   Zap,
 } from "lucide-react";
 import { desktopApi, onStutterMarked } from "../api";
+import { BASELINE_PROFILE } from "../config/profiles";
 import type {
   MirrorOptions,
   ProbeStatus,
@@ -134,18 +135,7 @@ export function DiagnosticsPanel({
 
   // ── Apply Baseline Preset (8 Mbps, 60fps, H.264, buffer 0, audio OFF) ─────
   const applyBaselinePreset = useCallback(() => {
-    setOptions((prev) => ({
-      ...prev,
-      maxSize: 1920,
-      maxFps: 60,
-      videoCodec: "h264",
-      videoBitRateMbps: 8,
-      audio: false,
-      videoBufferMs: 0,
-      verboseLogs: true,
-      turnScreenOff: true,
-      stayAwake: true,
-    }));
+    setOptions((prev) => ({ ...prev, ...BASELINE_PROFILE }));
     onNotify?.({
       type: "success",
       tag: "BASELINE",

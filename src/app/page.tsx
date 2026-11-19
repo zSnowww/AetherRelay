@@ -7,6 +7,7 @@ import { detectLocale, localizeBackendError, translate, type Locale, type Messag
 import packageMetadata from "../../package.json";
 import { useDevices } from "../hooks/useDevices";
 import { useMirror } from "../hooks/useMirror";
+import { DEFAULT_OPTIONS } from "../config/profiles";
 
 import { DeviceList } from "../components/DeviceList";
 import { SettingsPanel } from "../components/SettingsPanel";
@@ -22,18 +23,11 @@ import type { ActivationLog, EnvironmentStatus, MirrorOptions, ToastNotification
 
 type Notice = { key: MessageKey; values?: Record<string, string | number> } | { raw: string };
 
-const defaults: MirrorOptions = {
-  serial: "", maxSize: 1920, videoBitRateMbps: 12, maxFps: 60,
-  turnScreenOff: false, stayAwake: true, fullscreen: false,
-  audio: true, alwaysOnTop: false,
-  targetApp: "auto",
-  launchPandaMousePro: true, launchAppPackage: "", shortcutMod: "lalt,lsuper", virtualDisplay: false
-};
 
 export default function Page() {
   const [locale, setLocale] = useState<Locale>("en"); // Fallback initial
   const [environment, setEnvironment] = useState<EnvironmentStatus | null>(null);
-  const [options, setOptions] = useState(defaults);
+  const [options, setOptions] = useState<MirrorOptions>(DEFAULT_OPTIONS);
   const [busy, setBusy] = useState(false);
   const [showDeviceHelp, setShowDeviceHelp] = useState(false);
   const [activeView, setActiveView] = useState<"mirror" | "performance" | "preferences" | "diagnostics">("mirror");

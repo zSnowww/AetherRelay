@@ -16,6 +16,7 @@ import {
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import packageMetadata from "../../package.json";
 import { ConfirmModal } from "./ConfirmModal";
+import { GAMING_PROFILE, resetOptions } from "../config/profiles";
 import type { MirrorOptions, ToastNotification } from "../types";
 import type { Locale, MessageKey } from "../i18n";
 
@@ -193,27 +194,7 @@ export function PreferencesPanel({
   }
 
   function handleReset() {
-    setOptions((current) => ({
-      ...current,
-      maxSize: 1920,
-      videoBitRateMbps: 16,
-      maxFps: 60,
-      turnScreenOff: false,
-      stayAwake: true,
-      fullscreen: false,
-      audio: true,
-      alwaysOnTop: false,
-      launchPandaMousePro: true,
-      virtualDisplay: false,
-      shortcutMod: "lalt,lsuper",
-      videoCodec: "auto",
-      audioCodec: "auto",
-      audioBufferMs: 100,
-      lowLatencyEncoder: false,
-      videoBufferMs: 0,
-      hwdec: "auto",
-      verboseLogs: false,
-    }));
+    setOptions(resetOptions);
     onThemeChange?.("lime");
     setShowResetConfirm(false);
     onNotify?.({
@@ -224,24 +205,8 @@ export function PreferencesPanel({
     });
   }
 
-  // Tuned on a Snapdragon 4 Gen 2 / 4 GB phone: near-native 720p capture,
-  // hardware H.264 at a low bitrate, realtime encoder, screen off to limit heat.
   function applyLowEndGamingProfile() {
-    setOptions((current) => ({
-      ...current,
-      maxSize: 1600,
-      videoBitRateMbps: 8,
-      maxFps: 60,
-      videoCodec: "h264",
-      lowLatencyEncoder: true,
-      videoBufferMs: 0,
-      hwdec: "auto",
-      virtualDisplay: false,
-      turnScreenOff: true,
-      stayAwake: true,
-      audio: true,
-      audioBufferMs: 60,
-    }));
+    setOptions((current) => ({ ...current, ...GAMING_PROFILE }));
     onNotify?.({
       type: "success",
       tag: "PROFILE",

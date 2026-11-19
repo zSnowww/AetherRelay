@@ -6,6 +6,7 @@
 //! - Linux sysfs USB link speed negotiation & transport_id reconnect detection
 //! - Monotonic session tracking, deferred stutter bookmarks (-60s to +30s), and privacy-redacted export.
 
+use crate::tools::hidden_command;
 use crate::types::{
     BookmarkState, DeviceDiagnostics, DiagnosticsExport, ProbeStatus, ScrcpyDiagnostics,
     ScrcpyLogEntry, ScrcpyLogLevel, SessionDiagnostics, SessionMetadata, SessionSample,
@@ -438,7 +439,7 @@ pub(crate) fn start_telemetry_worker(tracker: Arc<SessionTracker>, adb_path: Str
             // ── 1. ADB Command Latency (Every 2 seconds) ────────────────────────
             if now >= next_latency {
                 next_latency = now + Duration::from_secs(2);
-                let mut cmd = Command::new(adb);
+                let mut cmd = hidden_command(adb);
                 cmd.args(["-s", serial, "shell", "true"]);
                 let (current_latency_status, _, elapsed) =
                     run_command_with_timeout(cmd, Duration::from_millis(1500));
@@ -474,12 +475,12 @@ pub(crate) fn start_telemetry_worker(tracker: Arc<SessionTracker>, adb_path: Str
             // ── 2. Battery & Thermal Status (Every 4 seconds) ───────────────────
             if now >= next_thermal {
                 next_thermal = now + Duration::from_secs(4);
-                let mut battery_cmd = Command::new(adb);
+                let mut battery_cmd = hidden_command(adb);
                 battery_cmd.args(["-s", serial, "shell", "dumpsys", "battery"]);
                 let (b_status, b_out, _) =
                     run_command_with_timeout(battery_cmd, Duration::from_millis(2500));
 
-                let mut thermal_cmd = Command::new(adb);
+                let mut thermal_cmd = hidden_command(adb);
                 thermal_cmd.args(["-s", serial, "shell", "dumpsys", "thermalservice"]);
                 let (t_status, t_out, _) =
                     run_command_with_timeout(thermal_cmd, Duration::from_millis(2500));
@@ -506,7 +507,7 @@ pub(crate) fn start_telemetry_worker(tracker: Arc<SessionTracker>, adb_path: Str
             // ── 3. USB Link Speed & Transport ID (Every 10 seconds) ────────────
             if now >= next_usb {
                 next_usb = now + Duration::from_secs(10);
-                let mut dev_cmd = Command::new(adb);
+                let mut dev_cmd = hidden_command(adb);
                 dev_cmd.args(["devices", "-l"]);
                 let (d_status, d_out, _) =
                     run_command_with_timeout(dev_cmd, Duration::from_millis(2000));
