@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Mirror defaults and the Gaming/Baseline presets now live in a single module (`src/config/profiles.ts`). "Reset" now restores the same values as a first launch (12 Mbps instead of 16 Mbps) and keeps the selected device and target app.
 
+- **On-demand Diagnostics Probes**: The adb latency, battery/thermal `dumpsys` and USB probes now run only while the Diagnostics panel is open or a stutter bookmark is collecting, instead of spawning adb shells on the phone every 2–4 seconds during every session. FPS and warning samples are still recorded.
+- **Push-based Device Detection**: Device connect/disconnect now arrives as an event from `adb track-devices` instead of polling `adb devices` every 2.5 seconds (a 15-second fallback poll remains).
+- `list_devices`, `start_mirror`, `stop_mirror` and `mirror_state` now run off the main thread, so adb calls no longer freeze the window.
+
 ### Fixed
 - **Console Windows During Play (Windows)**: Diagnostics probes launched `adb` without the hidden-console flag, which could flash a console window every 2 seconds and steal focus from the mirror.
 - **Video Buffer Preference**: The "Video Buffer" selector in Preferences toggled Virtual Display mode instead of the buffer; choosing "50 ms" silently started an extra virtual display. It now sets `--video-buffer` as labelled.

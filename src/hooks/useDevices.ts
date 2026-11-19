@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { desktopApi } from "../api";
+import { desktopApi, onDevicesChanged } from "../api";
 import type { Device } from "../types";
 
 export function useDevices() {
@@ -36,13 +36,20 @@ export function useDevices() {
     void refreshDevicesSilently();
 
     const handleFocus = () => { void refreshDevicesSilently(); };
+    // The backend pushes "devices-changed" from `adb track-devices`; the slow
+    // poll only covers the watcher restarting (e.g. adb server restart).
+    let unlisten: (() => void) | undefined;
+    void onDevicesChanged(() => { void refreshDevicesSilently(); }).then((fn) => {
+      if (cancelled) fn(); else unlisten = fn;
+    });
     const timer = window.setInterval(() => {
       void refreshDevicesSilently();
-    }, 2500);
-    
+    }, 15000);
+
     window.addEventListener("focus", handleFocus);
     return () => {
       cancelled = true;
+      unlisten?.();
       window.clearInterval(timer);
       window.removeEventListener("focus", handleFocus);
     };

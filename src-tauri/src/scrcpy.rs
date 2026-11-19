@@ -180,7 +180,8 @@ pub(crate) fn parse_scrcpy_stream_line(
 
 // ── Commands ──────────────────────────────────────────────────────────────────
 
-#[tauri::command]
+// Runs off the main thread: it spawns adb/scrcpy and can block for seconds.
+#[tauri::command(async)]
 pub(crate) fn start_mirror(
     options: MirrorOptions,
     process: State<'_, MirrorProcess>,
@@ -422,7 +423,8 @@ pub(crate) fn start_mirror(
     Ok(state)
 }
 
-#[tauri::command]
+// Runs off the main thread: it spawns adb/scrcpy and can block for seconds.
+#[tauri::command(async)]
 pub(crate) fn stop_mirror(
     process: State<'_, MirrorProcess>,
     telemetry: State<'_, MirrorTelemetry>,
@@ -456,7 +458,8 @@ pub(crate) fn mirror_fps(telemetry: State<'_, MirrorTelemetry>) -> Option<u32> {
     telemetry.0.lock().ok().and_then(|t| t.fps)
 }
 
-#[tauri::command]
+// Runs off the main thread: it spawns adb/scrcpy and can block for seconds.
+#[tauri::command(async)]
 pub(crate) fn mirror_state(
     process: State<'_, MirrorProcess>,
     diagnostics: State<'_, DiagnosticsState>,

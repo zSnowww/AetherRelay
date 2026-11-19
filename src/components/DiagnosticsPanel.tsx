@@ -82,6 +82,14 @@ export function DiagnosticsPanel({
     }
   }, []);
 
+  // Device probes (adb latency, thermal, USB) only run while this panel is open.
+  useEffect(() => {
+    void desktopApi.setDiagnosticsProbes(true).catch(() => {});
+    return () => {
+      void desktopApi.setDiagnosticsProbes(false).catch(() => {});
+    };
+  }, []);
+
   useEffect(() => {
     void fetchTelemetry();
     const interval = setInterval(fetchTelemetry, 1500);

@@ -49,6 +49,7 @@ export const desktopApi = {
   exportDiagnostics: (logs: ScrcpyLogEntry[]) => invokeDesktop<string>("export_diagnostics_json", { logs }),
   scrcpyLogs: (limit?: number) => invokeDesktop<ScrcpyLogEntry[]>("get_scrcpy_logs", { limit }),
   clearScrcpyLogs: () => invokeDesktop<void>("clear_scrcpy_logs"),
+  setDiagnosticsProbes: (enabled: boolean) => invokeDesktop<void>("set_diagnostics_probes", { enabled }),
 };
 
 export function onStutterMarked(callback: () => void): Promise<UnlistenFn> {
@@ -56,6 +57,16 @@ export function onStutterMarked(callback: () => void): Promise<UnlistenFn> {
     return Promise.resolve(() => {});
   }
   return listen("stutter-marked", () => {
+    callback();
+  });
+}
+
+/** Fires when adb reports a device connected, disconnected or changing state. */
+export function onDevicesChanged(callback: () => void): Promise<UnlistenFn> {
+  if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
+    return Promise.resolve(() => {});
+  }
+  return listen("devices-changed", () => {
     callback();
   });
 }

@@ -5,12 +5,14 @@
 //!
 //! - [`tools`]       — binary detection (`adb`, `scrcpy`)
 //! - [`adb`]         — device listing, app activation / deactivation
+//! - [`device_watch`] — push-based device change events (`adb track-devices`)
 //! - [`scrcpy`]      — mirror process lifecycle and FPS telemetry
 //! - [`diagnostics`] — independent telemetry probes, session tracking, bookmarks
 //! - [`system`]      — system stats and safe process termination
 //! - [`types`]       — shared data types
 
 mod adb;
+mod device_watch;
 mod diagnostics;
 mod scrcpy;
 mod system;
@@ -71,7 +73,8 @@ pub fn run() {
         .manage(diag_state)
         .setup(move |app| {
             let handle = app.handle().clone();
-            diagnostics::start_ipc_listener(handle, diag_inner);
+            diagnostics::start_ipc_listener(handle.clone(), diag_inner);
+            device_watch::start(handle);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -98,7 +101,13 @@ pub fn run() {
             diagnostics::mark_stutter,
             diagnostics::get_stutter_bookmarks,
             diagnostics::export_diagnostics_json,
+            diagnostics::set_diagnostics_probes,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Aether Gaming Desktop");
+        .build(tauri::generate_context!())
+        .expect("error while building Aether Gaming Desktop")
+        .run(|_app, event| {
+            if let tauri::RunEvent::Exit = event {
+                device_watch::stop();
+            }
+        });
 }

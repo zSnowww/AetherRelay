@@ -338,6 +338,24 @@ pub(crate) struct DiagnosticsState(pub(crate) Arc<Mutex<Option<Arc<SessionTracke
 
 // ── Worker Probing Logic ───────────────────────────────────────────────────────
 
+/// Device probes (adb latency, battery/thermal dumpsys, USB) each spawn an adb
+/// shell that shares the USB link with the video stream, so they only run while
+/// someone is looking at diagnostics or a stutter bookmark is collecting.
+static PROBES_ENABLED: AtomicBool = AtomicBool::new(false);
+
+fn has_collecting_bookmark(tracker: &SessionTracker) -> bool {
+    tracker
+        .bookmarks
+        .lock()
+        .map(|b| b.iter().any(|m| m.state == BookmarkState::Collecting))
+        .unwrap_or(false)
+}
+
+#[tauri::command]
+pub(crate) fn set_diagnostics_probes(enabled: bool) {
+    PROBES_ENABLED.store(enabled, Ordering::Relaxed);
+}
+
 /// Parse temperature in °C from `dumpsys battery`
 pub(crate) fn parse_battery_temp(output: &str) -> Option<f32> {
     for line in output.lines() {
@@ -435,9 +453,10 @@ pub(crate) fn start_telemetry_worker(tracker: Arc<SessionTracker>, adb_path: Str
                 break;
             }
             let now = Instant::now();
+            let probing = PROBES_ENABLED.load(Ordering::Relaxed) || has_collecting_bookmark(&tracker);
 
             // ── 1. ADB Command Latency (Every 2 seconds) ────────────────────────
-            if now >= next_latency {
+            if probing && now >= next_latency {
                 next_latency = now + Duration::from_secs(2);
                 let mut cmd = hidden_command(adb);
                 cmd.args(["-s", serial, "shell", "true"]);
@@ -473,7 +492,7 @@ pub(crate) fn start_telemetry_worker(tracker: Arc<SessionTracker>, adb_path: Str
             }
 
             // ── 2. Battery & Thermal Status (Every 4 seconds) ───────────────────
-            if now >= next_thermal {
+            if probing && now >= next_thermal {
                 next_thermal = now + Duration::from_secs(4);
                 let mut battery_cmd = hidden_command(adb);
                 battery_cmd.args(["-s", serial, "shell", "dumpsys", "battery"]);
@@ -505,7 +524,7 @@ pub(crate) fn start_telemetry_worker(tracker: Arc<SessionTracker>, adb_path: Str
             }
 
             // ── 3. USB Link Speed & Transport ID (Every 10 seconds) ────────────
-            if now >= next_usb {
+            if probing && now >= next_usb {
                 next_usb = now + Duration::from_secs(10);
                 let mut dev_cmd = hidden_command(adb);
                 dev_cmd.args(["devices", "-l"]);

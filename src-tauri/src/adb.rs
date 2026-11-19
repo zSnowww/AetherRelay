@@ -1203,7 +1203,8 @@ fn parse_device(line: &str) -> Option<Device> {
     Some(device)
 }
 
-#[tauri::command]
+// Runs off the main thread: it spawns adb/scrcpy and can block for seconds.
+#[tauri::command(async)]
 pub(crate) fn list_devices(app: AppHandle) -> Result<Vec<Device>, String> {
     let adb = resolve_tool("adb", &app).ok_or("未找到 adb，请重新安装 Aether Relay")?;
     let output = hidden_command(adb)
