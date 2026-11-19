@@ -1,6 +1,6 @@
 [package]
 name = "aether-relay"
-version = "0.2.0"
+version = "0.3.0"
 description = "Mirror Android to your desktop and play with keyboard and mouse"
 authors = ["zsnow"]
 license = "Apache-2.0"

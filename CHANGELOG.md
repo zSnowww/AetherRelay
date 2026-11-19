@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-19
+
 ### Added
 - **Entry-level Gaming Profile**: One-click preset in Preferences for phones with entry-level chips and 4 GB RAM (1600px, 60 FPS, hardware H.264 at 8 Mbps, realtime encoder, phone screen off to limit thermal throttling).
 - **Realtime Encoder Option**: New Preferences toggle that passes `--video-codec-options=priority:int=0,latency:int=0` to scrcpy, asking the device encoder for realtime priority without frame batching.
