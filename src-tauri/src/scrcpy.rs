@@ -1,7 +1,8 @@
 //! scrcpy process management: start, stop, FPS telemetry, dual-pipe log capture.
 
-use crate::adb::find_target_by_name_or_auto;
 use crate::diagnostics::{start_telemetry_worker, DiagnosticsState, SessionTracker};
+use crate::errors;
+use crate::keymapper::{find_target_by_name_or_auto, FALLBACK_MAPPER_PACKAGE};
 use crate::tools::{hidden_command, resolve_tool};
 use crate::types::{MirrorOptions, MirrorState, ScrcpyLogEntry, ScrcpyLogLevel, ScrcpyLogSource};
 use std::{
@@ -190,21 +191,19 @@ pub(crate) fn start_mirror(
     app: AppHandle,
 ) -> Result<MirrorState, String> {
     if options.serial.trim().is_empty() {
-        return Err("请先选择设备".into());
+        return Err(errors::NO_DEVICE.into());
     }
-    let scrcpy = resolve_tool("scrcpy", &app).ok_or("未找到 scrcpy，请重新安装 Aether Relay")?;
-    let adb = resolve_tool("adb", &app).ok_or("未找到 adb，请重新安装 Aether Relay")?;
+    let scrcpy = resolve_tool("scrcpy", &app).ok_or(errors::SCRCPY_MISSING)?;
+    let adb = resolve_tool("adb", &app).ok_or(errors::ADB_MISSING)?;
 
     if options.virtual_display {
-        let sdk = crate::adb::android_sdk(&adb, &options.serial)?;
+        let sdk = crate::device::android_sdk(&adb, &options.serial)?;
         if sdk < 29 {
-            return Err(format!(
-                "独立投屏需要 Android 10 或更高版本: 当前设备为 SDK {sdk}"
-            ));
+            return Err(errors::detail(errors::VIRTUAL_DISPLAY_SDK, sdk));
         }
     }
 
-    let mut guard = process.0.lock().map_err(|_| "镜像进程状态不可用")?;
+    let mut guard = process.0.lock().map_err(|_| errors::MIRROR_STATE)?;
     if let Some(running) = guard.as_mut() {
         if running
             .child
@@ -212,7 +211,7 @@ pub(crate) fn start_mirror(
             .map_err(|e| e.to_string())?
             .is_none()
         {
-            return Err("镜像已经在运行".into());
+            return Err(errors::MIRROR_RUNNING.into());
         }
         *guard = None;
     }
@@ -310,14 +309,14 @@ pub(crate) fn start_mirror(
             {
                 pkg
             } else {
-                "com.zjx.ztezscreenshot".to_string()
+                FALLBACK_MAPPER_PACKAGE.to_string()
             }
         } else if let Ok(Some((_, pkg))) =
             find_target_by_name_or_auto(&adb, &options.serial, options.target_app.as_deref())
         {
             pkg
         } else {
-            "com.zjx.ztezscreenshot".to_string()
+            FALLBACK_MAPPER_PACKAGE.to_string()
         };
         arguments.push(format!("--start-app={pkg_to_start}"));
     }
@@ -327,7 +326,7 @@ pub(crate) fn start_mirror(
 
     #[cfg(windows)]
     {
-        let tools_dir = scrcpy.parent().ok_or("无法定位 scrcpy 工具目录")?;
+        let tools_dir = scrcpy.parent().ok_or(errors::SCRCPY_MISSING)?;
         command.current_dir(tools_dir);
     }
     command.env("ADB", &adb);
@@ -354,7 +353,7 @@ pub(crate) fn start_mirror(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|e| format!("启动 scrcpy 失败: {e}"))?;
+        .map_err(|e| errors::detail(errors::MIRROR_START, e))?;
 
     // Reset telemetry
     let telemetry_arc = telemetry.0.clone();
@@ -430,12 +429,12 @@ pub(crate) fn stop_mirror(
     telemetry: State<'_, MirrorTelemetry>,
     diagnostics: State<'_, DiagnosticsState>,
 ) -> Result<MirrorState, String> {
-    let mut guard = process.0.lock().map_err(|_| "镜像进程状态不可用")?;
+    let mut guard = process.0.lock().map_err(|_| errors::MIRROR_STATE)?;
     if let Some(mut running) = guard.take() {
         running
             .child
             .kill()
-            .map_err(|e| format!("停止 scrcpy 失败: {e}"))?;
+            .map_err(|e| errors::detail(errors::MIRROR_STOP, e))?;
         let _ = running.child.wait();
     }
     if let Ok(mut value) = telemetry.0.lock() {
@@ -464,7 +463,7 @@ pub(crate) fn mirror_state(
     process: State<'_, MirrorProcess>,
     diagnostics: State<'_, DiagnosticsState>,
 ) -> Result<MirrorState, String> {
-    let mut guard = process.0.lock().map_err(|_| "镜像进程状态不可用")?;
+    let mut guard = process.0.lock().map_err(|_| errors::MIRROR_STATE)?;
     let Some(running) = guard.as_mut() else {
         return Ok(MirrorState {
             running: false,

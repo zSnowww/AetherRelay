@@ -22,7 +22,11 @@ HTML; the backend is a Rust library that exposes Tauri IPC commands.
 │  Backend — Rust (src-tauri/src/)                     │
 │  lib.rs        ← entry point, command registration   │
 │  tools.rs      ← resolve_tool(), tool_info()         │
-│  adb.rs        ← list_devices, activate/deactivate   │
+│  device.rs     ← list_devices, SDK, packages         │
+│  device_watch  ← adb track-devices → events          │
+│  keymapper.rs  ← mapper registry, activate/deactivate│
+│  phone.rs      ← phone RAM, close background apps    │
+│  errors.rs     ← stable error codes                  │
 │  scrcpy.rs     ← start/stop mirror, FPS telemetry    │
 │  system.rs     ← system_stats, terminate_process     │
 │  types.rs      ← shared serde types                  │
@@ -52,7 +56,11 @@ HTML; the backend is a Rust library that exposes Tauri IPC commands.
 | Module | Responsibility |
 |---|---|
 | `tools.rs` | Resolves `adb` / `scrcpy` binaries across bundled, PATH, and platform-specific locations. |
-| `adb.rs` | Device listing (`adb devices -l`), keymapper app activation via `adb shell monkey` + activation scripts, force-deactivation via `am force-stop` and shell kill scripts, and device RAM telemetry via `adb shell cat /proc/meminfo`. |
+| `device.rs` | Device listing (`adb devices -l`), Android SDK version, installed and foreground packages. |
+| `device_watch.rs` | Runs `adb track-devices` and emits a `devices-changed` event on every change, so the UI does not poll. |
+| `keymapper.rs` | Single registry of supported mappers (packages, activation scripts, daemon process markers). Activation via `adb shell monkey` + activation scripts; deactivation via `am force-stop` and shell kill scripts. |
+| `phone.rs` | Phone RAM telemetry (`/proc/meminfo`), per-app memory, heavy background app detection and protected force-stop. |
+| `errors.rs` | Stable error codes (`E_CODE` or `E_CODE: detail`) returned by commands and translated by the frontend in `src/i18n.ts`. |
 | `scrcpy.rs` | Full mirror lifecycle: argument construction, process spawn, stdout FPS parsing, `MirrorProcess` / `MirrorTelemetry` state management. |
 | `system.rs` | Linux-only: reads `/proc/meminfo` and `/proc/<pid>/status` to build a per-user process list. `terminate_process` validates UID ownership before sending SIGTERM. |
 | `types.rs` | All `#[derive(Serialize, Deserialize)]` data types shared between modules. |

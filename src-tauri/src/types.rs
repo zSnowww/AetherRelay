@@ -123,56 +123,6 @@ pub(crate) struct SystemStats {
 
 // ── Activation targets ────────────────────────────────────────────────────────
 
-pub(crate) struct ActivationTarget {
-    pub(crate) name: &'static str,
-    pub(crate) package_names: &'static [&'static str],
-    pub(crate) script_paths: &'static [&'static str],
-}
-
-pub(crate) const ACTIVATION_TARGETS: &[ActivationTarget] = &[
-    ActivationTarget {
-        name: "GG Mouse Pro",
-        package_names: &[
-            "com.zjx.ztezscreenshot",
-            "com.ggmouse.pro",
-            "com.ggmouse.gaming",
-        ],
-        script_paths: &[
-            "/data/data/com.zjx.ztezscreenshot/files/activate.sh",
-            "/sdcard/Android/data/com.zjx.ztezscreenshot/files/activate.sh",
-            "/sdcard/Android/data/com.zjx.ztezscreenshot/files/scripts/activate.sh",
-            "/storage/emulated/0/Android/data/com.zjx.ztezscreenshot/files/activate.sh",
-            "/storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh",
-        ],
-    },
-    ActivationTarget {
-        name: "Panda Mouse Pro",
-        package_names: &["com.panda.mouse"],
-        script_paths: &[
-            "/sdcard/Android/data/com.panda.mouse/files/scripts/activate.sh",
-            "/data/data/com.panda.mouse/files/activate.sh",
-            "/storage/emulated/0/Android/data/com.panda.mouse/files/scripts/activate.sh",
-        ],
-    },
-    ActivationTarget {
-        name: "Panda Gamepad Pro",
-        package_names: &["com.panda.gamepad"],
-        script_paths: &[
-            "/sdcard/Android/data/com.panda.gamepad/files/scripts/activate.sh",
-            "/data/data/com.panda.gamepad/files/activate.sh",
-            "/storage/emulated/0/Android/data/com.panda.gamepad/files/scripts/activate.sh",
-        ],
-    },
-    ActivationTarget {
-        name: "Panda Touch Pro",
-        package_names: &["com.panda.touch"],
-        script_paths: &[
-            "/sdcard/Android/data/com.panda.touch/files/scripts/activate.sh",
-            "/data/data/com.panda.touch/files/activate.sh",
-        ],
-    },
-];
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ActivationLog {

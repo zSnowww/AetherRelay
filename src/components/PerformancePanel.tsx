@@ -14,7 +14,7 @@ import {
 import { desktopApi } from "../api";
 import { ConfirmModal } from "./ConfirmModal";
 import type { DeviceMemoryStats, GameBoostResult, PhoneProcessInfo, SystemStats, ToastNotification } from "../types";
-import type { MessageKey } from "../i18n";
+import { describeBackendError, type MessageKey } from "../i18n";
 
 const formatMemory = (bytes: number) => {
   if (bytes >= 1024 * 1024 * 1024) {
@@ -89,7 +89,7 @@ export function PerformancePanel({
       setPcStats(await desktopApi.systemStats());
       setPcError(null);
     } catch (reason) {
-      setPcError(String(reason));
+      setPcError(describeBackendError(t, reason));
     } finally {
       setPcLoading(false);
     }
@@ -107,7 +107,7 @@ export function PerformancePanel({
       setPhoneStats(stats);
       setPhoneError(null);
     } catch (reason) {
-      setPhoneError(String(reason));
+      setPhoneError(describeBackendError(t, reason));
       setPhoneStats(null);
     } finally {
       setPhoneLoading(false);
@@ -178,7 +178,7 @@ export function PerformancePanel({
       onNotify?.({
         type: "error",
         tag: "ERROR",
-        message: String(reason),
+        message: describeBackendError(t, reason),
       });
     } finally {
       setBoostingMemory(false);
@@ -201,7 +201,7 @@ export function PerformancePanel({
         message: `${target.name} (PID ${target.pid})`,
       });
     } catch (reason) {
-      const err = String(reason);
+      const err = describeBackendError(t, reason);
       setPcError(err);
       onNotify?.({
         type: "error",
@@ -244,7 +244,7 @@ export function PerformancePanel({
       onNotify?.({
         type: "error",
         tag: "ERROR",
-        message: String(reason),
+        message: describeBackendError(t, reason),
       });
     }
   }

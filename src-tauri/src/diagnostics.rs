@@ -6,6 +6,7 @@
 //! - Linux sysfs USB link speed negotiation & transport_id reconnect detection
 //! - Monotonic session tracking, deferred stutter bookmarks (-60s to +30s), and privacy-redacted export.
 
+use crate::errors;
 use crate::tools::hidden_command;
 use crate::types::{
     BookmarkState, DeviceDiagnostics, DiagnosticsExport, ProbeStatus, ScrcpyDiagnostics,
@@ -453,7 +454,8 @@ pub(crate) fn start_telemetry_worker(tracker: Arc<SessionTracker>, adb_path: Str
                 break;
             }
             let now = Instant::now();
-            let probing = PROBES_ENABLED.load(Ordering::Relaxed) || has_collecting_bookmark(&tracker);
+            let probing =
+                PROBES_ENABLED.load(Ordering::Relaxed) || has_collecting_bookmark(&tracker);
 
             // ── 1. ADB Command Latency (Every 2 seconds) ────────────────────────
             if probing && now >= next_latency {
@@ -903,7 +905,7 @@ pub(crate) fn export_diagnostics_json(
 ) -> Result<String, String> {
     let guard = diagnostics.0.lock().map_err(|e| e.to_string())?;
     let Some(ref tracker) = *guard else {
-        return Err("No active diagnostic session to export".into());
+        return Err(errors::NO_SESSION.into());
     };
 
     let dev = tracker

@@ -4,16 +4,22 @@
 //! Business logic lives in the sibling modules:
 //!
 //! - [`tools`]       — binary detection (`adb`, `scrcpy`)
-//! - [`adb`]         — device listing, app activation / deactivation
+//! - [`device`]      — device listing, SDK version, installed/foreground packages
+//! - [`keymapper`]   — supported mapper registry, activation / deactivation
+//! - [`phone`]       — phone RAM, heavy-app detection, safe force-stop
+//! - [`errors`]      — stable error codes returned to the frontend
 //! - [`device_watch`] — push-based device change events (`adb track-devices`)
 //! - [`scrcpy`]      — mirror process lifecycle and FPS telemetry
 //! - [`diagnostics`] — independent telemetry probes, session tracking, bookmarks
 //! - [`system`]      — system stats and safe process termination
 //! - [`types`]       — shared data types
 
-mod adb;
+mod device;
 mod device_watch;
 mod diagnostics;
+mod errors;
+mod keymapper;
+mod phone;
 mod scrcpy;
 mod system;
 mod tools;
@@ -79,15 +85,15 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             tools::check_environment,
-            adb::list_devices,
-            adb::activate_apps,
-            adb::deactivate_apps,
-            adb::check_keymapper_status,
-            adb::device_memory,
-            adb::list_preset_apps,
-            adb::list_phone_processes,
-            adb::boost_phone_memory,
-            adb::kill_phone_apps,
+            device::list_devices,
+            keymapper::activate_apps,
+            keymapper::deactivate_apps,
+            keymapper::check_keymapper_status,
+            phone::device_memory,
+            phone::list_preset_apps,
+            phone::list_phone_processes,
+            phone::boost_phone_memory,
+            phone::kill_phone_apps,
             system::system_stats,
             system::terminate_process,
             scrcpy::start_mirror,

@@ -43,7 +43,12 @@ src/                   Next.js frontend (React + TypeScript)
 src-tauri/src/         Rust backend (Tauri commands)
   lib.rs               Entry point — registers all Tauri commands
   tools.rs             adb / scrcpy binary detection
-  adb.rs               Device listing, app activation / deactivation
+  device.rs            Device listing, SDK version, installed / foreground packages
+  device_watch.rs      Push-based device change events (adb track-devices)
+  keymapper.rs         Supported mapper registry, activation / deactivation
+  phone.rs             Phone RAM, heavy-app detection, safe force-stop
+  diagnostics.rs       Session telemetry probes, stutter bookmarks
+  errors.rs            Stable error codes (translated in src/i18n.ts)
   scrcpy.rs            Mirror process lifecycle, FPS telemetry
   system.rs            /proc-based system stats, safe process termination
   types.rs             Shared data types

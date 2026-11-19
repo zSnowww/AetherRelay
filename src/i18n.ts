@@ -300,6 +300,15 @@ const zh = {
   ,hwdecDesc: "硬件解码大幅降低电脑 CPU 占用。如果画面异常或黑屏，请切换为软件解码。"
   ,hwdecAuto: "硬件 (自动)"
   ,hwdecSoftware: "软件"
+  ,noAppsSelected: "请至少选择一个应用。"
+  ,appCloseFailed: "无法关闭应用: {detail}"
+  ,appForeground: "{detail} 正在前台运行，无法关闭。"
+  ,appProtected: "{detail} 受保护，无法关闭。"
+  ,processForbidden: "无法结束该进程。"
+  ,processMissingError: "未找到进程 {detail} 或无权访问。"
+  ,processTerminateFailed: "无法结束进程 {detail}。"
+  ,noSessionError: "没有可导出的诊断会话。"
+  ,internalError: "内部错误: {detail}"
   ,forceWaylandOption: "强制原生 Wayland (SDL_VIDEODRIVER=wayland)"
   ,forceWaylandDesc: "在 Linux / Hyprland 环境下绕过 XWayland，测试能否消除帧同步微卡顿。"
   ,videoBufferOption: "视频抖动缓冲区 (Video Jitter Buffer)"
@@ -621,6 +630,15 @@ const en: Record<keyof typeof zh, string> = {
   hwdecDesc: "Hardware decoding greatly reduces CPU use on your computer. Switch to software if the image glitches or stays black.",
   hwdecAuto: "Hardware (auto)",
   hwdecSoftware: "Software",
+  noAppsSelected: "Select at least one app.",
+  appCloseFailed: "Could not close app: {detail}",
+  appForeground: "{detail} is in the foreground and can't be closed.",
+  appProtected: "{detail} is protected and can't be closed.",
+  processForbidden: "That process can't be terminated.",
+  processMissingError: "Process {detail} was not found or is not accessible.",
+  processTerminateFailed: "Could not terminate process {detail}.",
+  noSessionError: "There is no diagnostics session to export.",
+  internalError: "Internal error: {detail}",
   forceWaylandOption: "Force Native Wayland (SDL_VIDEODRIVER=wayland)",
   forceWaylandDesc: "Bypasses XWayland on Linux / Hyprland to test if vsync pacing improves.",
   videoBufferOption: "Video Jitter Buffer",
@@ -942,6 +960,15 @@ const es: Record<keyof typeof zh, string> = {
   hwdecDesc: "La decodificación por hardware reduce mucho el uso de CPU del PC. Cambia a software si la imagen falla o se queda en negro.",
   hwdecAuto: "Hardware (automático)",
   hwdecSoftware: "Software",
+  noAppsSelected: "Selecciona al menos una app.",
+  appCloseFailed: "No se pudo cerrar la app: {detail}",
+  appForeground: "{detail} está en primer plano y no se puede cerrar.",
+  appProtected: "{detail} está protegida y no se puede cerrar.",
+  processForbidden: "Ese proceso no se puede terminar.",
+  processMissingError: "No se encontró el proceso {detail} o no es accesible.",
+  processTerminateFailed: "No se pudo terminar el proceso {detail}.",
+  noSessionError: "No hay una sesión de diagnóstico para exportar.",
+  internalError: "Error interno: {detail}",
   forceWaylandOption: "Forzar Wayland Nativo (SDL_VIDEODRIVER=wayland)",
   forceWaylandDesc: "Bypasa XWayland en Linux / Hyprland para comprobar si elimina micro-tirones de pacing.",
   videoBufferOption: "Buffer de Jitter de Video",
@@ -976,31 +1003,43 @@ export function translate(locale: Locale, key: MessageKey, values: Record<string
   );
 }
 
+const ERROR_CODES: Record<string, MessageKey> = {
+  E_ADB_MISSING: "adbMissing",
+  E_SCRCPY_MISSING: "scrcpyMissing",
+  E_ADB_FAILED: "adbRunFailed",
+  E_NO_DEVICE: "selectDeviceError",
+  E_MAPPER_MISSING: "supportedAppMissing",
+  E_MAPPER_LAUNCH: "launchAppFailed",
+  E_MAPPER_ACTIVATE: "activateAppFailed",
+  E_MAPPER_DEACTIVATE: "deactivateAppFailed",
+  E_VIRTUAL_DISPLAY_SDK: "virtualDisplayError",
+  E_MIRROR_STATE: "processUnavailable",
+  E_MIRROR_RUNNING: "mirrorAlreadyRunning",
+  E_MIRROR_START: "startFailed",
+  E_MIRROR_STOP: "stopFailed",
+  E_NO_APPS_SELECTED: "noAppsSelected",
+  E_APP_CLOSE: "appCloseFailed",
+  E_APP_FOREGROUND: "appForeground",
+  E_APP_PROTECTED: "appProtected",
+  E_LINUX_ONLY_PERFORMANCE: "performanceNotAvailable",
+  E_LINUX_ONLY_TERMINATE: "terminateNotAvailable",
+  E_PROCESS_FORBIDDEN: "processForbidden",
+  E_PROCESS_NOT_FOUND: "processMissingError",
+  E_PROCESS_TERMINATE: "processTerminateFailed",
+  E_NO_SESSION: "noSessionError",
+  E_INTERNAL: "internalError",
+};
+
+type Translator = (key: MessageKey, values?: Record<string, string | number>) => string;
+
+/** Translates a backend error ("E_CODE" or "E_CODE: detail", see src-tauri/src/errors.rs). */
+export function describeBackendError(t: Translator, error: unknown) {
+  const raw = error instanceof Error ? error.message : String(error);
+  const match = /^(E_[A-Z_]+)(?::\s*([\s\S]*))?$/.exec(raw);
+  const key = match && ERROR_CODES[match[1]];
+  return key ? t(key, { detail: match[2] ?? "" }) : raw;
+}
+
 export function localizeBackendError(locale: Locale, error: unknown) {
-  const raw = String(error);
-  const exact: Record<string, MessageKey> = {
-    "未找到 adb，请重新安装 Aether Relay": "adbMissing",
-    "请先选择设备": "selectDeviceError",
-    "未安装受支持的 Panda 映射 App": "supportedAppMissing",
-    "未安装受支持的映射 App (GG Mouse Pro / Panda)": "supportedAppMissing",
-    "未找到 scrcpy，请重新安装 Aether Relay": "scrcpyMissing",
-    "镜像进程状态不可用": "processUnavailable",
-    "镜像已经在运行": "mirrorAlreadyRunning",
-    "The performance panel is currently only available on Linux.": "performanceNotAvailable",
-    "Process termination is only available on Linux.": "terminateNotAvailable",
-  };
-  if (exact[raw]) return translate(locale, exact[raw]);
-  const prefixes: Array<[string, MessageKey]> = [
-    ["无法运行 adb: ", "adbRunFailed"],
-    ["无法启动映射 App: ", "launchAppFailed"],
-    ["Panda App 激活失败: ", "activateAppFailed"],
-    ["映射 App 激活失败: ", "activateAppFailed"],
-    ["App 激活失败: ", "activateAppFailed"],
-    ["停止映射进程失败: ", "deactivateAppFailed"],
-    ["独立投屏需要 Android 10 或更高版本: ", "virtualDisplayError"],
-    ["启动 scrcpy 失败: ", "startFailed"],
-    ["停止 scrcpy 失败: ", "stopFailed"]
-  ];
-  const match = prefixes.find(([prefix]) => raw.startsWith(prefix));
-  return match ? translate(locale, match[1], { detail: raw.slice(match[0].length) }) : raw;
+  return describeBackendError((key, values) => translate(locale, key, values), error);
 }

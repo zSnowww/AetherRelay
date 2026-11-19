@@ -1,5 +1,6 @@
 //! System stats and safe process termination.
 
+use crate::errors;
 use crate::types::{SystemProcess, SystemStats};
 use std::fs;
 
@@ -87,7 +88,7 @@ pub(crate) fn system_stats() -> Result<SystemStats, String> {
 #[cfg(not(target_os = "linux"))]
 #[tauri::command]
 pub(crate) fn system_stats() -> Result<SystemStats, String> {
-    Err("The performance panel is currently only available on Linux.".into())
+    Err(errors::LINUX_ONLY_PERFORMANCE.into())
 }
 
 /// Tauri command: send SIGTERM to a process owned by the current user.
@@ -99,17 +100,15 @@ pub(crate) fn system_stats() -> Result<SystemStats, String> {
 #[tauri::command]
 pub(crate) fn terminate_process(pid: u32) -> Result<(), String> {
     if pid <= 1 || pid == std::process::id() {
-        return Err("Cannot terminate that process.".into());
+        return Err(errors::PROCESS_FORBIDDEN.into());
     }
     // Ownership check: read /proc/<pid> metadata and compare UID.
     let current_uid = fs::metadata("/proc/self").map_err(|e| e.to_string())?.uid();
     let target_uid = fs::metadata(format!("/proc/{pid}"))
-        .map_err(|_| format!("Process {pid} not found or not accessible."))?
+        .map_err(|_| errors::detail(errors::PROCESS_NOT_FOUND, pid))?
         .uid();
     if target_uid != current_uid {
-        return Err(format!(
-            "Process {pid} does not belong to the current user."
-        ));
+        return Err(errors::detail(errors::PROCESS_FORBIDDEN, pid));
     }
     let status = crate::tools::hidden_command("kill")
         .args(["-TERM", &pid.to_string()])
@@ -118,14 +117,14 @@ pub(crate) fn terminate_process(pid: u32) -> Result<(), String> {
     if status.success() {
         Ok(())
     } else {
-        Err(format!("Could not terminate process {pid}."))
+        Err(errors::detail(errors::PROCESS_TERMINATE, pid))
     }
 }
 
 #[cfg(not(target_os = "linux"))]
 #[tauri::command]
 pub(crate) fn terminate_process(_pid: u32) -> Result<(), String> {
-    Err("Process termination is only available on Linux.".into())
+    Err(errors::LINUX_ONLY_TERMINATE.into())
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

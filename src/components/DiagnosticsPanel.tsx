@@ -34,7 +34,7 @@ import type {
   ThermalStatus,
   ToastNotification,
 } from "../types";
-import type { MessageKey } from "../i18n";
+import { describeBackendError, type MessageKey } from "../i18n";
 
 interface DiagnosticsPanelProps {
   t: (key: MessageKey, values?: Record<string, string | number>) => string;
@@ -134,7 +134,7 @@ export function DiagnosticsPanel({
       onNotify?.({
         type: "error",
         tag: "ERROR",
-        message: String(e),
+        message: describeBackendError(t, e),
       });
     } finally {
       setTimeout(() => setIsMarking(false), 600);
@@ -185,7 +185,7 @@ export function DiagnosticsPanel({
       onNotify?.({
         type: "error",
         tag: "ERROR",
-        message: String(e),
+        message: describeBackendError(t, e),
       });
     }
   }, [logs, onNotify, session?.metadata.sessionId, t]);

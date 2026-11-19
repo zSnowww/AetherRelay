@@ -22,7 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Push-based Device Detection**: Device connect/disconnect now arrives as an event from `adb track-devices` instead of polling `adb devices` every 2.5 seconds (a 15-second fallback poll remains).
 - `list_devices`, `start_mirror`, `stop_mirror` and `mirror_state` now run off the main thread, so adb calls no longer freeze the window.
 
+- **Backend Module Layout**: `adb.rs` (1,350 lines) is split into `device.rs`, `keymapper.rs` and `phone.rs`. Supported mappers, their packages and daemon process markers now live in one registry instead of three separate lists.
+- **Error Codes**: Backend commands return stable codes (`E_ADB_MISSING`, `E_MIRROR_START: <detail>`, …) instead of Chinese/Spanish/English sentences, and the frontend translates by code. Errors in the Performance and Diagnostics panels are now localized too.
+
 ### Fixed
+- **False "Keymapper Active" on Honor Phones**: Mapper detection matched any process containing `gameassistant`, including Honor's system Game Assistant, which starts with games. Detection and the deactivation kill script now only match mapper-specific names.
 - **Console Windows During Play (Windows)**: Diagnostics probes launched `adb` without the hidden-console flag, which could flash a console window every 2 seconds and steal focus from the mirror.
 - **Video Buffer Preference**: The "Video Buffer" selector in Preferences toggled Virtual Display mode instead of the buffer; choosing "50 ms" silently started an extra virtual display. It now sets `--video-buffer` as labelled.
 - **Diagnostics Decoder Detection**: Session diagnostics now read scrcpy 5's `Video decoding: <method>` line, so hardware decoding (VA-API, D3D11VA, VideoToolbox) is reported correctly.
