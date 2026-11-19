@@ -1,0 +1,108 @@
+/* Preferences view: groups and setting rows. */
+
+/* Integrated Preferences Architecture */
+.pref-group {
+  margin-bottom: 18px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.pref-group-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 18px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--border);
+}
+.pref-group-header svg {
+  color: var(--lime);
+}
+.pref-group-header h3 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.pref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 13px 18px;
+  transition: background 140ms ease;
+}
+.pref-row + .pref-row {
+  border-top: 1px solid var(--border);
+}
+.pref-row:hover {
+  background: rgba(255, 255, 255, 0.015);
+}
+.pref-row-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+.pref-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border);
+  color: var(--lime);
+}
+.pref-texts {
+  min-width: 0;
+  flex: 1;
+}
+.pref-title-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pref-title-line h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  color: #f4f4f5;
+}
+.pref-texts p {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+.pref-row-control {
+  flex-shrink: 0;
+  min-width: 170px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.pref-row-control select {
+  width: 100%;
+  min-width: 170px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: #e4e4e7;
+  background: #0d0d0f;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.pref-row-control select:hover {
+  border-color: var(--border-strong);
+  background: #121214;
+}
+.pref-row-control .theme-palette-picker {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

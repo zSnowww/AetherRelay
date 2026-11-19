@@ -40,6 +40,9 @@ src/                   Next.js frontend (React + TypeScript)
   config/              Defaults, presets (profiles.ts) and theme palettes
   hooks/               useOptions, useActivation, useDevices, useMirror, useLocale, useTheme, useToasts
   components/ui/       Shared building blocks (PrefRow)
+  components/diagnostics/  Diagnostics panel sections + useDiagnosticsData
+  components/performance/  Performance panel sections + format helpers
+  styles/              Global CSS split by area, imported in order by app/globals.css
   i18n.ts              All user-visible strings in en / es / zh-CN
 
 src-tauri/src/         Rust backend (Tauri commands)

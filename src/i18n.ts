@@ -1037,7 +1037,7 @@ const ERROR_CODES: Record<string, MessageKey> = {
   E_INTERNAL: "internalError",
 };
 
-type Translator = (key: MessageKey, values?: Record<string, string | number>) => string;
+export type Translator = (key: MessageKey, values?: Record<string, string | number>) => string;
 
 /** Translates a backend error ("E_CODE" or "E_CODE: detail", see src-tauri/src/errors.rs). */
 export function describeBackendError(t: Translator, error: unknown) {

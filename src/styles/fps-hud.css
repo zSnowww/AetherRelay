@@ -1,0 +1,6 @@
+/* Floating FPS counter. */
+
+.fps-hud { position: fixed; left: 18px; bottom: 18px; z-index: 10; display: flex; align-items: baseline; gap: 5px; min-width: 82px; padding: 7px 9px; border: 1px solid rgba(197,240,21,.22); border-radius: 8px; color: #e4e4e7; background: rgba(12,12,13,.84); box-shadow: 0 8px 20px rgba(0,0,0,.28); backdrop-filter: blur(10px); }
+.fps-hud svg { color: var(--lime); }
+.fps-hud strong { color: #e6fb8f; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; line-height: 1; }
+.fps-hud span { color: var(--text-subtle); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9px; font-weight: 700; }

@@ -1,0 +1,89 @@
+/* Breakpoints for the rules above (later sheets carry their own). */
+
+/* Responsive Media Queries */
+@media (max-width: 900px) {
+  .app-shell { width: calc(100% - 32px); padding-top: 20px; }
+  .layout { grid-template-columns: 1fr; }
+  .empty { min-height: 160px; }
+  .shortcut-grid { grid-template-columns: repeat(3, 1fr); }
+  .shortcuts-panel { padding: 16px; }
+  .transparency-cards { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .preset-apps-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .preset-apps-badges {
+    justify-content: flex-start;
+  }
+  footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .footer-message {
+    width: 100%;
+  }
+  .footer-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .footer-actions > button, .footer-actions > div {
+    flex: 1 1 auto;
+    text-align: center;
+    justify-content: center;
+  }
+  .stepper-container {
+    grid-template-columns: repeat(3, 1fr);
+    row-gap: 12px;
+  }
+}
+
+@media (max-width: 620px) {
+  .preset-apps-panel { padding: 16px; }
+  .phone-process-column-headings,
+  .process-row.phone-process-row {
+    grid-template-columns: 40px minmax(0, 1fr) 72px 64px;
+    column-gap: 8px;
+  }
+  .phone-process-column-headings > span:nth-child(4),
+  .phone-process-row > .preset-badge { display: none; }
+  .phone-process-column-headings > span:nth-last-child(-n + 2) { text-align: right; }
+  .phone-process-pid { display: none; }
+}
+
+@media (max-width: 520px) {
+  .memory-card-header,
+  .boost-action-bar { align-items: flex-start; }
+  .memory-device-badge { display: none; }
+  .boost-action-bar { flex-direction: column; }
+  .boost-btn { width: 100%; justify-content: center; min-height: 34px; }
+  .phone-process-column-headings,
+  .process-row.phone-process-row { padding-left: 10px; padding-right: 10px; }
+  .phone-process-column-headings { font-size: 8px; }
+  .footer-actions {
+    flex-direction: column;
+  }
+  .footer-actions > button, .footer-actions > div {
+    width: 100%;
+  }
+  .shortcut-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .stepper-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .modal-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .footer-right {
+    width: 100%;
+    flex-direction: column;
+  }
+  .footer-right > button {
+    width: 100%;
+  }
+}

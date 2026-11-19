@@ -25,9 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Backend Module Layout**: `adb.rs` (1,350 lines) is split into `device.rs`, `keymapper.rs` and `phone.rs`. Supported mappers, their packages and daemon process markers now live in one registry instead of three separate lists.
 - **Error Codes**: Backend commands return stable codes (`E_ADB_MISSING`, `E_MIRROR_START: <detail>`, …) instead of Chinese/Spanish/English sentences, and the frontend translates by code. Errors in the Performance and Diagnostics panels are now localized too.
 - **Frontend Structure**: `page.tsx` drops from 519 to ~300 lines; activation, options persistence, locale, theme, toasts and stutter shortcuts move into dedicated hooks. Settings rows in Preferences use a shared `PrefRow` component, and theme palettes move to `src/config/themes.ts`.
+- **Styles and Large Panels**: `globals.css` (2,085 lines) is split into ten area files under `src/styles/`, imported in the original order (compiled CSS verified unchanged). The Diagnostics panel (691 lines) and Performance panel (673 lines) are split into section components under `src/components/diagnostics/` and `src/components/performance/` (rendered HTML verified identical).
 - The saved language now uses the `aether-locale` storage key; the old `panda-locale` value is migrated automatically.
 
 ### Fixed
+- **Performance Panel Language**: Errors in the Performance panel stayed in the previous language after switching languages.
 - **False "Keymapper Active" on Honor Phones**: Mapper detection matched any process containing `gameassistant`, including Honor's system Game Assistant, which starts with games. Detection and the deactivation kill script now only match mapper-specific names.
 - **Console Windows During Play (Windows)**: Diagnostics probes launched `adb` without the hidden-console flag, which could flash a console window every 2 seconds and steal focus from the mirror.
 - **Video Buffer Preference**: The "Video Buffer" selector in Preferences toggled Virtual Display mode instead of the buffer; choosing "50 ms" silently started an extra virtual display. It now sets `--video-buffer` as labelled.
